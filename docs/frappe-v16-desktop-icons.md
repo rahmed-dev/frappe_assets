@@ -20,8 +20,8 @@ Frappe v16 still ships **two** Desk landing surfaces. They look similar
 
 | URL | Renderer | Data source | Where defined |
 |---|---|---|---|
-| `/desk` | Page DocType "desktop" (legacy v12-era, kept active) | `frappe.boot.desktop_icons` | `Desktop Icon` DocType rows (JSON fixture per app) |
-| `/app` | Workspace SPA (the v15/v16 native UI) | `frappe.boot.app_data` | `hooks.py add_to_apps_screen` + Workspace DocType |
+| `/desk` | Page DocType "desktop" (v16) | `frappe.boot.desktop_icons` | `Desktop Icon` DocType rows (JSON fixture per app) |
+| `/app` | Workspace SPA (the v13-v15 native UI) | `frappe.boot.app_data` | `hooks.py add_to_apps_screen` + Workspace DocType |
 
 Many users land on `/desk` because:
 - Older sites have `User.home_page = "/desk"` set.
