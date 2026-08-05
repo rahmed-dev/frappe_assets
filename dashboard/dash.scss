@@ -166,11 +166,30 @@
  * `--dd-measure` is declared here rather than in §1 for the same reason: the
  * token block is scoped to `.dd-page`, which is a descendant, and custom
  * properties inherit down. A page overrides it by redeclaring it on `.dd-host`.
+ *
+ * THE `body:not(.full-width)` GUARD IS FRAPPE'S OWN, AND IS NOT OPTIONAL.
+ * Desk ships a **Toggle Full Width** command (avatar menu → Display, and the
+ * command palette). All it does is flip `body.full-width` and remember it in
+ * `localStorage.container_fullwidth`; every capped surface in Desk — the form
+ * layout, the Workspaces layout, the tree view, the grid row modal — opts in
+ * with exactly this guard, and a surface that omits it silently ignores the
+ * toggle. Wearing it means an operator who wants the whole monitor gets it,
+ * with the menu entry and the persistence already built, and nobody has to be
+ * told that this one page answers to a different control.
+ *
+ * Note this is a state CLASS, not a design token — the reason the top of this
+ * file refuses to build on frappe's semantic tokens does not apply. `.full-width`
+ * is observable behaviour with a UI attached to it, not a colour that resolves
+ * to nothing.
+ *
+ * We keep our own measure rather than frappe's `--page-max-width` (900px):
+ * that is sized for a single form column, and five KPI cards inside it come out
+ * 165px wide. Same mechanism, a width chosen for this layout.
  */
 .dd-host {
 	--dd-measure: 1180px;
 }
-.dd-host .container {
+body:not(.full-width) .dd-host .container {
 	max-width: var(--dd-measure);
 	margin-left: auto;
 	margin-right: auto;

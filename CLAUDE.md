@@ -137,6 +137,16 @@ ever reconsidered — that is Font Awesome's.
   the primary action live in the page head, so capping only the body centres the
   dashboard and strands the controls that drive it on the left edge. A page
   overrides the width by redeclaring `--dd-measure` on `.dd-host`.
+- **Any width cap must carry frappe's `body:not(.full-width)` guard.** Desk's
+  **Toggle Full Width** command (avatar menu → Display, and the command palette)
+  only flips `body.full-width` and remembers it in
+  `localStorage.container_fullwidth`. Every capped surface in Desk — form
+  layout, Workspaces, tree view, grid row modal — opts in with that guard, and a
+  surface that omits it silently ignores the toggle. This is a state class with
+  a UI attached, not one of the semantic tokens this toolkit refuses to build
+  on, so the "own the palette" rule does not apply to it. The measure itself
+  stays ours: frappe's `--page-max-width` is 900px, sized for one form column,
+  and five KPI cards inside that come out 165px wide.
 - **A Desk Page has no left rail unless something claims its route.** The rail
   is built from `Workspace Sidebar.items` — a different doctype from `Workspace`,
   whose `links` only draw the cards *inside* a workspace page. With no sidebar
