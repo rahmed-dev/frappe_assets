@@ -86,8 +86,8 @@ class Pass {
 			</span>`;
 	}
 
-	drill(descriptor, label, context) {
-		return attrs(this.drills, descriptor, label, context);
+	drill(descriptor, context) {
+		return attrs(this.drills, descriptor, context);
 	}
 
 	/** Render one node, or an array of them. */
@@ -118,7 +118,7 @@ function panel_kpis(node) {
 	const cards = node.items.map((item) => {
 		const dot = item.dot ? `<span class="dd-kpi-dot dd-kpi-dot-${item.dot}"></span>` : "";
 		return `
-			<div class="dd-kpi" ${this.drill(item.drill, item.label, { item })}>
+			<div class="dd-kpi" ${this.drill(item.drill, { item })}>
 				${dot}
 				<div class="dd-kpi-label">${fmt.esc(item.label)}${this.explainer(item.explain)}</div>
 				<div class="dd-kpi-value">${fmt.esc(item.value)}${item.delta || ""}</div>
@@ -160,7 +160,7 @@ function panel_bars(node) {
 		const rate = item.rate ? `<span class="dd-bar-rate">${fmt.esc(item.rate)}</span>` : "";
 		const lost = item.lost || 0;
 		return `
-			<div class="dd-bar" ${this.drill(item.drill, item.label, { item })}>
+			<div class="dd-bar" ${this.drill(item.drill, { item })}>
 				<div class="dd-bar-label" title="${fmt.esc(item.label)}">${fmt.esc(item.label)}</div>
 				<div class="dd-bar-track">
 					<span class="dd-bar-kept" style="width: ${width(item.kept)}%"></span>
@@ -215,7 +215,7 @@ function panel_rows(node) {
 		const slot = spark ? this.charts.push({ kind: "spark", item, token: tone.token }) - 1 : "";
 
 		return `
-			<div class="dd-row ${tone.row}" ${this.drill(item.drill, item.name, { item })}>
+			<div class="dd-row ${tone.row}" ${this.drill(item.drill, { item })}>
 				<span class="dd-stripe"></span>
 				<div class="dd-row-main">
 					<div class="dd-row-name">${fmt.esc(item.name)}${status}</div>
@@ -243,7 +243,7 @@ function panel_table(node) {
 			const cells = node.columns
 				.map((col) => `<td class="${col.numeric ? "dd-num" : ""}">${fmt.esc(row[col.key])}</td>`)
 				.join("");
-			return `<tr ${this.drill(row.drill, null, { item: row })}>${cells}</tr>`;
+			return `<tr ${this.drill(row.drill, { item: row })}>${cells}</tr>`;
 		})
 		.join("");
 

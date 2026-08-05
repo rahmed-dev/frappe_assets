@@ -29,12 +29,17 @@ export const DRILL_ATTR = "data-dd-drill";
  * is the difference between a feature and a demo. `.dd-drillable` supplies the
  * visible affordance; `drill.js` binds the activation.
  */
-export function attrs(registry, drill, label, context) {
+export function attrs(registry, drill, context) {
 	if (!drill) {
 		return "";
 	}
 	const index = registry.push({ descriptor: drill, context: context || {} }) - 1;
-	const hint = label ? __("Open {0}", [label]) : __("Open the underlying records");
+	// Deliberately vague unless the spec says otherwise. A dashboard figure is
+	// usually an aggregate — distinct sessions, distinct customers — while the
+	// list it opens is rows, so "Open these 12" would be a promise the list
+	// cannot keep. A descriptor that really does open exactly the counted rows
+	// can say so with its own `hint`.
+	const hint = drill.hint || __("Open the underlying records");
 	return `${DRILL_ATTR}="${index}" class="dd-drillable" role="link" tabindex="0" title="${frappe.utils.escape_html(hint)}"`;
 }
 

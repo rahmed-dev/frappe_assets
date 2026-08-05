@@ -34,13 +34,17 @@ export class Dashboard {
 	 *   dated               → true                optional; false drops the date fields
 	 *   namespace           → "dd"                optional; only matters if two
 	 *                                               dashboards can be open at once
+	 *   page_class          → ""                  optional hook for page-local CSS
 	 */
 	constructor(page, options) {
 		this.page = page;
 		this.options = options;
 		this.presets = options.presets || DEFAULT_PRESETS;
 		this.namespace = options.namespace || "dd";
-		this.body = $('<div class="dd-page">').appendTo(page.main);
+		// `page_class` is the seam for the genuinely page-local rule — a label
+		// column sized for one dashboard's stage names, say. It exists so that such
+		// a rule has somewhere to go other than the shared stylesheet.
+		this.body = $(`<div class="dd-page ${options.page_class || ""}">`).appendTo(page.main);
 
 		if (options.dated !== false) {
 			this.setup_dates();
