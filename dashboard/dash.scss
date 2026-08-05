@@ -146,6 +146,36 @@
  * `.dd-grid` is the equal-column grid; `.dd-split` is the
  * two-column one for a pair of panels read side by side.
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* The measure. Set by the controller on the Desk PAGE WRAPPER, not on
+ * `.dd-page`.
+ *
+ * Desk hands a page the whole window. On a wide monitor that puts the five KPI
+ * cards a hand-span apart and stretches a five-row bar panel to 900px, at which
+ * point the eye stops comparing lengths and starts reading stripes — the same
+ * reason the bars themselves are width-capped in §8.
+ *
+ * The cap has to sit on Desk's own `.container` because a dashboard's controls
+ * are not inside `.dd-page`: `add_field` and `set_primary_action` put the date
+ * fields and the Refresh button in the page HEAD, a sibling element. Capping
+ * only our own body would centre the content and leave the controls that drive
+ * it hanging off the left edge. Both `.container`s — head and body — take the
+ * same measure, so the breadcrumb, the dates, the cards and the footer all
+ * align on one pair of edges.
+ *
+ * `--dd-measure` is declared here rather than in §1 for the same reason: the
+ * token block is scoped to `.dd-page`, which is a descendant, and custom
+ * properties inherit down. A page overrides it by redeclaring it on `.dd-host`.
+ */
+.dd-host {
+	--dd-measure: 1180px;
+}
+.dd-host .container {
+	max-width: var(--dd-measure);
+	margin-left: auto;
+	margin-right: auto;
+}
+
 .dd-page .dd-grid {
 	display: grid;
 	gap: var(--dd-space-3);
@@ -1013,7 +1043,8 @@
  * that performs.
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .dd-page.dd-enter > * {
-	animation: dd-panel-enter var(--dd-enter-duration) var(--dd-enter-ease) backwards;
+	animation: dd-panel-enter var(--dd-enter-duration) var(--dd-enter-ease)
+		backwards;
 }
 @keyframes dd-panel-enter {
 	from {

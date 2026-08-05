@@ -130,6 +130,22 @@ ever reconsidered — that is Font Awesome's.
   there. Controls that need the design system must render *inside* the body.
 - **`.layout-main-section` has no horizontal padding of its own.** `.dd-page`
   supplies the gutter; without it, cards sit flush against the sidebar.
+- **The measure is capped on the page WRAPPER, not on `.dd-page`.** The
+  controller stamps `dd-host` on `page.wrapper` and §2 caps both of Desk's
+  `.container` elements — head and body — at `--dd-measure` (1180px). It has to
+  be the wrapper for the same reason as the gotcha above: the date fields and
+  the primary action live in the page head, so capping only the body centres the
+  dashboard and strands the controls that drive it on the left edge. A page
+  overrides the width by redeclaring `--dd-measure` on `.dd-host`.
+- **A Desk Page has no left rail unless something claims its route.** The rail
+  is built from `Workspace Sidebar.items` — a different doctype from `Workspace`,
+  whose `links` only draw the cards *inside* a workspace page. With no sidebar
+  item whose `link_to` matches the route, `Sidebar.set_workspace_sidebar`
+  resolves nothing, `setup()` never runs, and the rail renders **blank** —
+  standard items and all, not merely stale. Arriving from a workspace hides it,
+  because the rail already on screen is kept when nothing resolves, so this only
+  shows up when the page's URL is opened directly. Consuming apps must write a
+  `Workspace Sidebar Item`, not just a `Workspace Link`.
 - **`frappe.format(v, {fieldtype: "Int"})` returns HTML**, not a string —
   `<div style='text-align: right'>2</div>`. Passing it to `.text()` prints the
   markup on the page. Use `Number(v).toLocaleString()`.

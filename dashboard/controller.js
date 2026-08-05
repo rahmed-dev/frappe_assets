@@ -44,7 +44,15 @@ export class Dashboard {
 		// `page_class` is the seam for the genuinely page-local rule — a label
 		// column sized for one dashboard's stage names, say. It exists so that such
 		// a rule has somewhere to go other than the shared stylesheet.
-		this.body = $(`<div class="dd-page ${options.page_class || ""}">`).appendTo(page.main);
+		this.body = $(`<div class="dd-page ${options.page_class || ""}">`).appendTo(
+			page.main,
+		);
+
+		// The measure (§2) is applied to the page WRAPPER, because the date fields
+		// and the Refresh button live in Desk's page head — outside `.dd-page`.
+		// Capping only our own element would centre the dashboard and leave its own
+		// controls against the left edge.
+		page.wrapper.addClass("dd-host");
 
 		if (options.dated !== false) {
 			this.setup_dates();
@@ -73,7 +81,11 @@ export class Dashboard {
 			default: today,
 			change: () => this.refresh(),
 		});
-		this.page.set_primary_action(__("Refresh"), () => this.refresh(), "refresh");
+		this.page.set_primary_action(
+			__("Refresh"),
+			() => this.refresh(),
+			"refresh",
+		);
 	}
 
 	range() {
@@ -120,7 +132,9 @@ export class Dashboard {
 		const from = this.from_date.get_value();
 		const match =
 			this.to_date.get_value() === today
-				? this.presets.find((days) => frappe.datetime.add_days(today, -days) === from)
+				? this.presets.find(
+						(days) => frappe.datetime.add_days(today, -days) === from,
+					)
 				: null;
 
 		if (match) {
@@ -259,7 +273,9 @@ export class Dashboard {
 		console.error(error); // eslint-disable-line no-console
 		this.body.html(
 			`<div class="dd-error">${frappe.utils.escape_html(
-				__("Could not load this dashboard. {0}", [(error && error.message) || ""]),
+				__("Could not load this dashboard. {0}", [
+					(error && error.message) || "",
+				]),
 			)}</div>`,
 		);
 	}

@@ -36,7 +36,8 @@
 				background: var(--demo-bg);
 				color: var(--demo-fg);
 				font-family:
-					-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+					-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+					Arial, sans-serif;
 				transition: background 0.15s ease;
 			}
 			.demo-bar {
@@ -63,7 +64,9 @@
 			#theme:hover {
 				border-color: currentColor;
 			}
-			/* Desk gives `.dd-page` its width; standing alone it needs a measure. */
+			/* The same measure §2 caps a Desk page at. It cannot be inherited from
+			   there: on Desk the cap lands on the page wrapper's `.container`s so the
+			   head controls are bounded too, and this page has no Desk chrome. */
 			.dd-page {
 				max-width: 1180px;
 				margin: 0 auto;
