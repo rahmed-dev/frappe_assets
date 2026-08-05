@@ -73,6 +73,16 @@ full-width bars and hides the drop the panel exists to show. Omitted, it default
 to the largest count — right for a distribution, wrong for a funnel, which should
 pass its first stage.
 
+Pass `legend` and every row gains a hover tip naming the two segments and
+counting them. Without it there is no tip: the legend is the only thing that
+says which figure is which, and a tip that has to be decoded is worse than none.
+The tip is anchored to the **row**, not the segments — a segment's width is a
+percentage of `scale`, so exactly when a figure is small enough to be worth
+hovering, its box is a few pixels wide or none at all.
+
+Segments grow from zero on mount and grow again whenever the data changes, with
+a small per-row stagger so a funnel draws top-down.
+
 **`rows`** — a list where each entry carries a state, a reason and a figure.
 ```js
 { type: "rows", items: [
@@ -97,6 +107,21 @@ The toolkit supplies the theme, the tooltip, the resize observer, and re-themes
 the canvas when the Desk theme flips. Pass a **function** when a series needs a
 semantic colour (`palette.danger`) and must still follow the theme. `drill`
 receives the clicked datum.
+
+Registered series types: **line, bar, pie, scatter, funnel, sankey, treemap,
+sunburst, heatmap, gauge, radar** — plus the grid, legend, tooltip, dataZoom,
+visualMap and markLine components. Anything else needs one more entry in
+`echarts.use()` in `charts.js` and a panel added to the gallery. Every one of
+them is drawn in `demo/index.html`; **look there before designing a dashboard**,
+it is faster than guessing and it is the only place the unused ones are visible.
+
+Two behaviours are inferred rather than configured, and both are load-bearing:
+naming an `xAxis` or `yAxis` is what marks the chart as cartesian (it gets the
+axis furniture and an axis-triggered tooltip; everything else gets neither), and
+declaring `legend` is what makes one appear at all. The series colour ramp is
+the monochrome `--dd-series-1..5`, never the status colours — see the repo
+`CLAUDE.md` for why, and for what to do instead when a series really does mean
+"failed".
 
 **`card`** — a titled box around any panel.
 `{ type: "card", title, hint, explain, body: <panel | panel[]> }`

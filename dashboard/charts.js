@@ -23,23 +23,56 @@
  */
 
 import * as echarts from "echarts/core";
-import { BarChart, LineChart, PieChart } from "echarts/charts";
+import {
+	BarChart,
+	LineChart,
+	PieChart,
+	ScatterChart,
+	FunnelChart,
+	SankeyChart,
+	TreemapChart,
+	SunburstChart,
+	HeatmapChart,
+	GaugeChart,
+	RadarChart,
+} from "echarts/charts";
 import {
 	GridComponent,
 	LegendComponent,
 	TooltipComponent,
 	DataZoomComponent,
+	VisualMapComponent,
+	MarkLineComponent,
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 
+// The registered set is what `demo/index.html` draws, and the two are meant to
+// stay in step: a gallery advertising a chart the toolkit cannot render is a
+// promise that fails at the worst moment, halfway through building a dashboard.
+//
+// Registering all eleven costs about 150 KB over the three the funnel needs
+// (565 -> 715 KB minified, measured). It is affordable only because this bundle
+// is NOT in `app_include_js` — a dashboard page pulls it with `frappe.require`,
+// so the weight lands on the pages that draw charts and nowhere else. Putting
+// this bundle in a global include is what would make the number matter.
 echarts.use([
 	BarChart,
 	LineChart,
 	PieChart,
+	ScatterChart,
+	FunnelChart,
+	SankeyChart,
+	TreemapChart,
+	SunburstChart,
+	HeatmapChart,
+	GaugeChart,
+	RadarChart,
 	GridComponent,
 	LegendComponent,
 	TooltipComponent,
 	DataZoomComponent,
+	VisualMapComponent,
+	MarkLineComponent,
 	CanvasRenderer,
 ]);
 
@@ -89,6 +122,13 @@ export function palette() {
 		danger: token("--dd-danger", dark ? "#ef4444" : "#dc2626"),
 		warning: token("--dd-warning", dark ? "#f59e0b" : "#d97706"),
 		info: token("--dd-info", dark ? "#3b82f6" : "#2563eb"),
+		series: [
+			token("--dd-series-1", dark ? "#fafafa" : "#18181b"),
+			token("--dd-series-2", dark ? "#c4c4cc" : "#52525b"),
+			token("--dd-series-3", dark ? "#94949e" : "#8a8a93"),
+			token("--dd-series-4", dark ? "#6a6a74" : "#b8b8bf"),
+			token("--dd-series-5", dark ? "#46464e" : "#dcdce0"),
+		],
 	};
 }
 
@@ -100,13 +140,20 @@ export function palette() {
  * `series` still gets a chart that matches the page, and the ones who care can
  * override any of it.
  */
-function base_option(colours) {
-	return {
+function base_option(colours, over) {
+	// Whether the caller named an axis is what decides if this is a chart drawn on
+	// a grid. It has to be decided, not assumed: ECharts draws an `xAxis`/`yAxis`
+	// it is given even when no series uses one, so handing the axis furniture to a
+	// pie or a funnel frames it in a pair of empty rulers. `trigger: "axis"` is the
+	// same mistake in the tooltip — on a pie it points at nothing and shows an
+	// empty box on hover.
+	const cartesian = Boolean(over && (over.xAxis || over.yAxis));
+
+	const common = {
 		animationDuration: 300,
 		textStyle: { color: colours.muted, fontSize: 11 },
-		grid: { left: 8, right: 12, top: 16, bottom: 8, containLabel: true },
 		tooltip: {
-			trigger: "axis",
+			trigger: cartesian ? "axis" : "item",
 			backgroundColor: colours.surface,
 			borderColor: colours.line,
 			borderWidth: 1,
@@ -114,6 +161,37 @@ function base_option(colours) {
 			textStyle: { color: colours.ink, fontSize: 11 },
 			axisPointer: { type: "line", lineStyle: { color: colours.line } },
 		},
+		// The categorical ramp, never the status colours. A caller whose series
+		// really does mean "failed" says so by passing `itemStyle.color` from the
+		// palette — which is what the `(colours) => option` form of `chart()` is
+		// for, and what keeps red meaning red on this surface.
+		color: colours.series,
+	};
+
+	// The legend does NOT inherit the root `textStyle`, and ECharts' own default
+	// is a fixed dark grey — so a legend is legible on the light theme by luck and
+	// invisible on the dark one. It has to be coloured explicitly.
+	//
+	// Only when the caller asked for one, though. Merely DECLARING `legend` is
+	// enough to make ECharts draw it for any series whose data carries names, so
+	// styling it unconditionally hangs a legend across the top of every funnel and
+	// pie that never wanted one.
+	if (over && over.legend) {
+		common.legend = {
+			textStyle: { color: colours.muted, fontSize: 11 },
+			icon: "roundRect",
+			itemWidth: 10,
+			itemHeight: 10,
+			itemGap: 14,
+		};
+	}
+
+	if (!cartesian) {
+		return common;
+	}
+
+	return Object.assign(common, {
+		grid: { left: 8, right: 12, top: 16, bottom: 8, containLabel: true },
 		xAxis: {
 			axisLine: { lineStyle: { color: colours.line } },
 			axisTick: { show: false },
@@ -126,8 +204,7 @@ function base_option(colours) {
 			axisLabel: { color: colours.muted },
 			splitLine: { lineStyle: { color: colours.line, type: "dashed" } },
 		},
-		color: [colours.accent, colours.info, colours.success, colours.warning, colours.danger],
-	};
+	});
 }
 
 /**
@@ -212,8 +289,10 @@ new MutationObserver(retheme).observe(document.documentElement, {
  * still follow the theme.
  */
 export function chart(el, option, on_click) {
-	const build = (colours) =>
-		merge(base_option(colours), typeof option === "function" ? option(colours) : option);
+	const build = (colours) => {
+		const over = typeof option === "function" ? option(colours) : option;
+		return merge(base_option(colours, over), over);
+	};
 	return mount(el, build, on_click);
 }
 

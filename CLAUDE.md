@@ -6,9 +6,20 @@ only the section you are working in.
 | Directory | What it is | Consumed how |
 |---|---|---|
 | `dashboard/` | The Desk dashboard toolkit — a design system plus a spec renderer | `yarn add` this repo, then import |
+| `demo/` | The gallery: every panel and chart type on one page, no bench needed | `yarn demo`, open `demo/index.html` |
 | `server_scripts/` | Standalone Server Script bodies | Copy-pasted into a site's Server Script doc |
 | `console_scripts/` | One-off `bench console` snippets | Pasted into a console, never run unattended |
 | `docs/` | Framework notes | Read |
+
+**This repo is public.** It is installed over plain HTTPS with no credentials,
+which is what lets a fresh bench run `yarn install` for a consuming app. Nothing
+site-specific, no keys and no customer data may land here — the snippet
+directories are the easy place to get that wrong.
+
+**Changing anything under `dashboard/` means re-running `yarn demo` and looking
+at the gallery.** It is the only place the chart types nobody has used yet are
+visible at all, and three of the bugs it has already caught were invisible on
+the one dashboard that exists. See `demo/README.md`.
 
 Everything below the first section is about `dashboard/` only. The snippet
 directories are deliberately *not* a package — they are text to paste, and
@@ -76,6 +87,18 @@ token in §1 **and** a re-tuned value in the dark block. The dark block wins by
 specificity — `(0,2,0)` beats `(0,1,0)` — so it is purely additive and never
 needs `!important`.
 
+The palette is **monochrome**, and that reaches the charts. `--dd-series-1..5`
+is a grey ramp, ordered by contrast against the surface rather than by
+lightness, and it is what `base_option` hands ECharts as its `color` array. The
+status colours are **not** in it: the slices of a donut and the bands of a stack
+are categories, and painting them red and green asserts something about them
+that is not true. A series that genuinely means "failed" says so by taking
+`colours.danger` through the `(colours) => option` form of `chart()`.
+
+A mono ramp costs you hue as a separator, so charts have to earn separation some
+other way — dash a second line, drop the pale end of the ramp where labels sit
+on the fill. The gallery has a worked example of each.
+
 Dark mode is detected from `[data-theme]` on `<html>`. `frappe.ui.set_theme()`
 resolves "automatic" to a concrete value *before* stamping that attribute, so
 `[data-theme="dark"]` covers Light, Dark and Automatic. **Never style on
@@ -118,6 +141,56 @@ ever reconsidered — that is Font Awesome's.
 
 ---
 
+## ECharts traps `base_option` exists to absorb
+
+Each of these is a default that looks fine on one chart and wrong on the next,
+which is why they are handled centrally instead of per dashboard.
+
+- **A declared `xAxis`/`yAxis` is drawn even when no series uses it.** Handing
+  the axis furniture to a pie or a funnel frames it in two empty rulers. Whether
+  the caller named an axis is what `base_option` uses to decide it is cartesian;
+  the same flag picks `tooltip.trigger` (`"axis"` on a grid, `"item"` off it —
+  an axis trigger on a pie shows an empty tooltip).
+- **Merely declaring `legend` makes ECharts draw one**, for any series whose
+  data carries names. So the legend is styled *only* when the caller asked for
+  one — styling it unconditionally hangs a legend over every funnel and pie.
+- **`legend` does not inherit the root `textStyle`**, and its default is a fixed
+  dark grey. A legend is legible on the light theme by luck and invisible on the
+  dark one unless its colour is set explicitly.
+- **Adding a series type is one entry in `echarts.use()`**, never a switch to
+  the umbrella build. The eleven currently registered cost ~150 KB over the
+  three a single dashboard needs (565 → 715 KB minified). That is affordable
+  only because this bundle is pulled with `frappe.require` and is **not** in
+  `app_include_js`. Putting it in a global include is what would make the number
+  matter.
+
+---
+
+## Motion
+
+Two things move, both switched off together under `prefers-reduced-motion`
+(`dash.scss` §13e holds the single block — do not add a second one):
+
+- **Bars grow** from zero to the width the renderer wrote inline. The keyframe
+  declares only `from`, so the implicit `to` is each bar's own width and one
+  rule animates every bar without the renderer knowing. It re-runs on data
+  change for free, because a refresh replaces the markup and these are new
+  elements. This works because an animation outranks an inline style in the
+  cascade — which is also why writing `width` inline stays safe.
+- **Panels arrive** on the first paint only. `controller.js#draw` puts `dd-enter`
+  on the page before the first render and takes it off before the second.
+  Animating every refresh would be worse than animating none: a date change
+  would read as a page load, and the slower the backend the more the animation
+  would look like the delay.
+
+Headless Chrome does not advance CSS animations under `--virtual-time-budget`,
+so a screenshot of the gallery is a screenshot of frame 0 — everything past the
+second panel is invisible. Pass `--force-prefers-reduced-motion` when capturing.
+That is a screenshot artefact, not a bug, and it has already been mistaken for
+one once.
+
+---
+
 ## Working here
 
 - The renderer is **pure**: `render(container, spec)` builds markup from data
@@ -128,3 +201,9 @@ ever reconsidered — that is Font Awesome's.
   are namespaced and cleared first so re-entering a page cannot stack a copy.
 - Anything drillable gets keyboard activation, not just a click handler.
 - No CDN loads. A Desk page must work on a LAN-only deployment.
+- **The package is `"sideEffects"`-annotated.** The toolkit is pure and may be
+  tree-shaken, but `demo/**` is listed because `gallery.js` imports
+  `frappe-stub.js` as a bare side-effect import. Under a blanket `false`,
+  esbuild deletes that import and the gallery dies on its first `__()`.
+- Run `yarn demo` and look at the page before calling a `dashboard/` change
+  done. Both themes — half the defects here only exist in one of them.

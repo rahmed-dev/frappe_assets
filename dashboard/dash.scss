@@ -79,6 +79,21 @@
 	--dd-bar-lost: #d4d4d8;
 	--dd-bar-track: #f1f1f3;
 
+	/* — Chart series — the categorical ramp, in order.
+	   Monochrome for the same reason the bars are: the slices of a donut or the
+	   bands of a stack are CATEGORIES, and painting them red and green says
+	   something about them that is not true. The status colours stay reserved for
+	   the series that genuinely mean good or bad, and a chart that assigns them
+	   by position spends them on nothing.
+	   Read by `charts.js#palette`, which is a canvas and cannot resolve a
+	   `var()` — so renaming one of these without updating that file degrades to
+	   a fallback silently. — */
+	--dd-series-1: #18181b;
+	--dd-series-2: #52525b;
+	--dd-series-3: #8a8a93;
+	--dd-series-4: #b8b8bf;
+	--dd-series-5: #dcdce0;
+
 	/* — Spacing (4px scale) — */
 	--dd-space-1: 4px;
 	--dd-space-2: 8px;
@@ -105,8 +120,14 @@
 	--dd-shadow-xs: 0 1px 2px rgba(24, 24, 27, 0.04);
 	--dd-shadow-md: 0 4px 12px rgba(24, 24, 27, 0.09);
 
-	/* — Motion — */
+	/* — Motion —
+	   `fast` is for state that answers the pointer and must feel instant.
+	   `enter` is for something arriving on screen for the first time; it is slow
+	   enough to be read as movement and short enough that nobody waits on it.
+	   Both are switched off wholesale under `prefers-reduced-motion` — see §13e. */
 	--dd-ease-fast: 0.12s ease;
+	--dd-enter-duration: 0.34s;
+	--dd-enter-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
 
 	/* Page-level layout.
 	 *
@@ -394,6 +415,10 @@
 	gap: var(--dd-space-2);
 	align-items: center;
 	min-height: 24px;
+	/* Anchors the hover tip below. The tip is absolutely positioned in every
+	   state, not only when shown: a fourth child of a 3-column grid that stayed
+	   in flow would wrap to a row of its own and push every later bar down. */
+	position: relative;
 }
 .dd-page .dd-bar-label {
 	font-size: var(--dd-text-sm);
@@ -415,6 +440,91 @@
 }
 .dd-page .dd-bar-lost {
 	background: var(--dd-bar-lost);
+}
+
+/* Segments grow from nothing to the width the renderer wrote inline.
+ *
+ * The keyframe declares only `from`; the implicit `to` is the element's own
+ * computed width, so one rule animates every bar to its own figure without the
+ * renderer or the controller knowing anything about it. This works because an
+ * animation outranks an inline style in the cascade — the reason no `!important`
+ * is needed here, and the reason writing `width` inline stays safe.
+ *
+ * It re-runs on every range change for free: a refresh replaces the page's
+ * markup, so these are new elements each time rather than the same ones being
+ * re-measured. `backwards` holds the zero width through the stagger delay,
+ * otherwise a bar would flash at full width and then restart. */
+.dd-page .dd-bar-kept,
+.dd-page .dd-bar-lost {
+	animation: dd-bar-grow var(--dd-enter-duration) var(--dd-enter-ease) backwards;
+	animation-delay: var(--dd-bar-delay, 0ms);
+}
+@keyframes dd-bar-grow {
+	from {
+		width: 0;
+	}
+}
+/* Rows draw in sequence, so a funnel reads top-down the way it is meant to be
+   read. Past the twelfth row the delay simply stops growing — a long list
+   arriving all at once is better than one that takes a second to finish. */
+@for $i from 1 through 12 {
+	.dd-page .dd-bars .dd-bar:nth-child(#{$i}) {
+		--dd-bar-delay: #{($i - 1) * 45}ms;
+	}
+}
+
+/* The hover tip: what the legend names, counted, for this row.
+ *
+ * Attached to the ROW, not to the individual segments. A segment is a `<span>`
+ * whose width is a percentage of the panel's scale, so the moment a figure is
+ * small — which is exactly when someone wants the number — its box is a few
+ * pixels wide or none at all, and a zero-width element cannot be hovered.
+ *
+ * `pointer-events: none` keeps it out of the way of the row's own drill click,
+ * and `:focus-within` means it is reachable by keyboard on a drillable row
+ * rather than being mouse-only. */
+.dd-page .dd-bar-tip {
+	position: absolute;
+	top: calc(100% - 1px);
+	left: calc(var(--dd-bar-label, 150px) + var(--dd-space-2));
+	z-index: 20;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: var(--dd-space-2) var(--dd-space-3);
+	border: 1px solid var(--dd-border);
+	border-radius: var(--dd-radius-sm);
+	background: var(--dd-surface);
+	box-shadow: var(--dd-shadow-md);
+	font-size: var(--dd-text-xs);
+	color: var(--dd-text-muted);
+	white-space: nowrap;
+	opacity: 0;
+	visibility: hidden;
+	transition:
+		opacity var(--dd-ease-fast),
+		visibility var(--dd-ease-fast);
+	pointer-events: none;
+}
+.dd-page .dd-bar:hover .dd-bar-tip,
+.dd-page .dd-bar:focus-within .dd-bar-tip {
+	opacity: 1;
+	visibility: visible;
+}
+/* Direct child only. The key swatch is itself a span inside this one, and a
+   bare `.dd-bar-tip span` would lay the swatch out as a flex row too. */
+.dd-page .dd-bar-tip > span {
+	display: flex;
+	align-items: center;
+}
+/* `auto` rather than a fixed gap, so both counts line up on the right edge
+   whatever the two labels are. */
+.dd-page .dd-bar-tip b {
+	margin-left: auto;
+	padding-left: var(--dd-space-6);
+	font-weight: 600;
+	color: var(--dd-text);
+	font-variant-numeric: tabular-nums;
 }
 .dd-page .dd-bar-figures {
 	display: flex;
@@ -877,13 +987,6 @@
 		opacity: 0.55;
 	}
 }
-/* Respect the OS setting — a pulsing block is exactly the kind of motion that
-   triggers discomfort, and a static skeleton communicates just as well. */
-@media (prefers-reduced-motion: reduce) {
-	.dd-page .dd-skeleton {
-		animation: none;
-	}
-}
 .dd-page .dd-error {
 	border: 1px solid var(--dd-danger);
 	background: var(--dd-danger-bg);
@@ -891,6 +994,55 @@
 	border-radius: var(--dd-radius-md);
 	padding: var(--dd-space-3) var(--dd-space-4);
 	font-size: var(--dd-text-sm);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * §13e · MOTION
+ *
+ * Two things move on this page and both are here or pointed at from here: the
+ * bars growing (§8) and the panels arriving (below).
+ *
+ * The entrance runs on the FIRST paint only. The controller puts `dd-enter` on
+ * the page before the first render and takes it off before the second, so a
+ * date change redraws instantly. Animating every refresh would be worse than
+ * animating none: switching 7d to 30d would feel like a page load, and the
+ * slower the backend the more it would look like the animation was the delay.
+ *
+ * The stagger is on the page's top-level panels only. Cascading it down through
+ * every card and row is the difference between a page that settles and a page
+ * that performs.
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.dd-page.dd-enter > * {
+	animation: dd-panel-enter var(--dd-enter-duration) var(--dd-enter-ease) backwards;
+}
+@keyframes dd-panel-enter {
+	from {
+		opacity: 0;
+		transform: translateY(6px);
+	}
+}
+/* Past the eighth panel the delay stops rather than wrapping back to zero, so
+   the tail of a long page appears with the eighth instead of ahead of it. */
+@for $i from 1 through 8 {
+	.dd-page.dd-enter > *:nth-child(#{$i}) {
+		animation-delay: #{($i - 1) * 50}ms;
+	}
+}
+.dd-page.dd-enter > *:nth-child(n + 9) {
+	animation-delay: 400ms;
+}
+
+/* Respect the OS setting. Every animation on this surface is decorative — the
+   skeleton still reads as loading, the bars still read at their true widths,
+   the panels are still there — so all of it comes off together rather than
+   being trimmed one rule at a time and drifting apart later. */
+@media (prefers-reduced-motion: reduce) {
+	.dd-page .dd-skeleton,
+	.dd-page .dd-bar-kept,
+	.dd-page .dd-bar-lost,
+	.dd-page.dd-enter > * {
+		animation: none;
+	}
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -969,6 +1121,15 @@
 	--dd-bar-kept: #e4e4e7;
 	--dd-bar-lost: #4b4b4f;
 	--dd-bar-track: #272727;
+
+	/* The ramp runs light-to-dark here, the reverse of §1. It is ordered by
+	   contrast against the surface, not by lightness, so series 1 is always the
+	   most prominent one whichever theme is on. */
+	--dd-series-1: #fafafa;
+	--dd-series-2: #c4c4cc;
+	--dd-series-3: #94949e;
+	--dd-series-4: #6a6a74;
+	--dd-series-5: #46464e;
 
 	/* Slate shadows vanish on dark; use black. */
 	--dd-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);

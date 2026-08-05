@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Dashboard toolkit — gallery</title>
+
+		<!--
+			Built assets, not sources. Run `yarn demo` to produce them; both are
+			gitignored. See demo/README.md.
+		-->
+		<link rel="stylesheet" href="./gallery.bundle.css" />
+
+		<style>
+			/*
+				The only styles the gallery owns. Everything below `.dd-page` comes
+				from `dashboard/dash.scss` and must not be touched here — a gallery
+				that patches the design system stops being evidence of what the
+				design system does.
+
+				On a Desk page this frame is Desk itself: `--dd-page-bg` stands in for
+				the workspace background so the cards have something to sit on.
+			*/
+			:root {
+				--demo-bg: #f4f4f5;
+				--demo-fg: #18181b;
+				--demo-border: #e4e4e7;
+			}
+			:root[data-theme="dark"] {
+				--demo-bg: #171717;
+				--demo-fg: #f4f4f5;
+				--demo-border: #2f2f2f;
+			}
+			body {
+				margin: 0;
+				background: var(--demo-bg);
+				color: var(--demo-fg);
+				font-family:
+					-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+				transition: background 0.15s ease;
+			}
+			.demo-bar {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 16px;
+				padding: 10px 16px;
+				border-bottom: 1px solid var(--demo-border);
+				font-size: 12px;
+			}
+			.demo-bar code {
+				opacity: 0.6;
+			}
+			#theme {
+				font: inherit;
+				padding: 5px 12px;
+				border: 1px solid var(--demo-border);
+				border-radius: 999px;
+				background: transparent;
+				color: inherit;
+				cursor: pointer;
+			}
+			#theme:hover {
+				border-color: currentColor;
+			}
+			/* Desk gives `.dd-page` its width; standing alone it needs a measure. */
+			.dd-page {
+				max-width: 1180px;
+				margin: 0 auto;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="demo-bar">
+			<code>frappe_assets/dashboard</code>
+			<button type="button" id="theme">Toggle theme</button>
+		</div>
+
+		<div class="dd-page"></div>
+
+		<!-- No `type="module"`: see the CORS note in build.mjs. -->
+		<script src="./gallery.bundle.js"></script>
+	</body>
+</html>

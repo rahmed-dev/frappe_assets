@@ -8,7 +8,10 @@
 		"url": "git+https://github.com/rahmed-dev/frappe_assets.git"
 	},
 	"type": "module",
-	"sideEffects": false,
+	"//sideEffects": "The toolkit is pure — every module earns its place by being imported for an export, so a consuming bundler may drop whatever a dashboard does not use. `demo/` is the exception and must be listed: `gallery.js` pulls in `frappe-stub.js` as a bare import for its side effects alone, and under a blanket `false` esbuild removes that import and the gallery dies on the first `__()`.",
+	"sideEffects": [
+		"demo/**"
+	],
 	"exports": {
 		"./dashboard": "./dashboard/index.js",
 		"./dashboard/*": "./dashboard/*",
@@ -17,7 +20,16 @@
 	"files": [
 		"dashboard"
 	],
+	"scripts": {
+		"demo": "node demo/build.mjs"
+	},
 	"peerDependencies": {
 		"echarts": "^5.6.0"
+	},
+	"//devDependencies": "Gallery build only. Yarn does not install a git dependency's devDependencies, so none of this reaches a consuming app. The script is named `demo` and not `prepare` for the same reason: yarn runs `prepare` for git deps, and every app installing this would start building the gallery.",
+	"devDependencies": {
+		"echarts": "^5.6.0",
+		"esbuild": "^0.25.0",
+		"sass": "^1.83.0"
 	}
 }

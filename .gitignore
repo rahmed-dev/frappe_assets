@@ -1,0 +1,5 @@
+node_modules/
+
+# Gallery build output — regenerate with `yarn demo`.
+demo/gallery.bundle.js
+demo/gallery.bundle.css

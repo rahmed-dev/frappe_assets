@@ -223,7 +223,18 @@ export class Dashboard {
 			.catch((error) => this.fail(error));
 	}
 
+	/**
+	 * Write a spec to the page.
+	 *
+	 * `dd-enter` has to be on the page BEFORE the markup is written, because the
+	 * entrance animation is keyed to the elements being created, and off again
+	 * before the second render, because otherwise every date change replays it —
+	 * which would read as the page reloading rather than the numbers updating.
+	 */
 	draw(spec) {
+		this.body.toggleClass("dd-enter", !this.entered);
+		this.entered = true;
+
 		const pass = render(this.body, spec);
 		this.drills = pass.drills;
 		this.sync_presets();

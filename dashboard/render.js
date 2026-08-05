@@ -150,6 +150,27 @@ function panel_card(node) {
  * Omitted, it defaults to the largest count — right for a distribution, wrong for
  * a funnel, which should pass its first stage.
  */
+/**
+ * The hover tip for one bar: what the legend names, counted.
+ *
+ * Needs the legend, because the legend is what the two segments are called —
+ * without it there is a kept number and a lost number and nothing on the page
+ * saying which is which, and a tip that has to be decoded is worse than none.
+ *
+ * Sized to the two segments rather than the row's total on purpose: the total is
+ * already printed in the figures column, and repeating it is what makes a
+ * tooltip feel like noise.
+ */
+function bar_tip(legend, kept, lost) {
+	if (!legend || kept == null) {
+		return "";
+	}
+	const line = (key, label, value) =>
+		`<span><span class="dd-key dd-key-${key}"></span>${fmt.esc(label)}<b>${fmt.count(value)}</b></span>`;
+
+	return `<div class="dd-bar-tip">${line("kept", legend[0], kept)}${line("lost", legend[1], lost)}</div>`;
+}
+
 function panel_bars(node) {
 	const scale = node.scale != null ? node.scale : Math.max(...node.items.map((i) => i.count), 0);
 
@@ -170,6 +191,7 @@ function panel_bars(node) {
 					<span class="dd-bar-count">${fmt.count(item.count)}</span>
 					${rate}
 				</div>
+				${bar_tip(node.legend, item.kept, lost)}
 			</div>`;
 	});
 
