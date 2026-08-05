@@ -1,0 +1,23 @@
+{
+	"name": "frappe-assets",
+	"version": "0.1.0",
+	"description": "Shared front-end toolkit and snippets for Frappe apps",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/rahmed-dev/frappe_assets.git"
+	},
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		"./dashboard": "./dashboard/index.js",
+		"./dashboard/*": "./dashboard/*",
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"dashboard"
+	],
+	"peerDependencies": {
+		"echarts": "^5.6.0"
+	}
+}

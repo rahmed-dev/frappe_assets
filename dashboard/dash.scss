@@ -1,0 +1,976 @@
+/* ============================================================================
+ * Desk dashboard — design system.
+ *
+ * Class prefix:  .dd-
+ * Scope anchor:  .dd-page — every rule descends from it, so nothing leaks into
+ *                the rest of the Desk. The anchor is not cosmetic: this sheet
+ *                is loaded globally by every consuming app, so an unscoped
+ *                `.card` or `.row` here would restyle half of Frappe.
+ *
+ * MAINTENANCE
+ *  • Change a token in §1, every component picks it up.
+ *  • New dashboard? Render through `render(container, spec)` — it emits these
+ *    classes for you. A page's own CSS should hold layout that is genuinely
+ *    local to it; if a rule would read sensibly on another dashboard, it
+ *    belongs here.
+ *
+ * WHY OWN TOKENS INSTEAD OF FRAPPE'S
+ *  The first cut of this file was built on frappe's semantic tokens, to "get
+ *  dark mode for free". It cost three rounds of rework instead, because those
+ *  tokens carry traps that are invisible until something renders wrong:
+ *  `--brand-color` resolves to `var(--primary)`, which this build defines
+ *  nowhere, so anything painted with it is transparent in both themes; the
+ *  numeric `--gray/red/blue-N` palette is NOT inverted for dark, so a `-100`
+ *  used as a surface stays light-on-light there; and `--card-bg` equals
+ *  `--bg-color` in dark, so a card painted with it dissolves into the page.
+ *  Owning the palette outright removes all three at once and makes the dark
+ *  theme a deliberate design rather than a hope. The cost is that the dark
+ *  values below are ours to maintain — §15 is not optional.
+ *
+ * COLOUR POLICY
+ *  The accent is MONOCHROME by decision: near-black on light, near-white on
+ *  dark. There is no brand hue on this surface. Anything that
+ *  needs to stand out does so through weight, size and ink density.
+ *  Status colours (success / danger / warning / info) are the ONE exception —
+ *  they carry meaning, not decoration, and are never used to liven something
+ *  up. If a colour here is not telling the reader a fact, it is wrong.
+ * ============================================================================ */
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * §1 · DESIGN TOKENS (light)
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.dd-page {
+	/* — Surfaces & lines — */
+	--dd-surface: #ffffff;
+	--dd-surface-alt: #f7f7f8;
+	--dd-border: #e4e4e7;
+	--dd-border-subtle: #f1f1f3;
+	--dd-border-strong: #d4d4d8;
+
+	/* — Text — */
+	--dd-text: #18181b;
+	--dd-text-muted: #71717a;
+	--dd-text-subtle: #a1a1aa;
+
+	/* — Accent — monochrome. `-contrast` is the ink that sits ON the accent. — */
+	--dd-accent: #18181b;
+	--dd-accent-contrast: #ffffff;
+
+	/* — Status — semantic only — */
+	--dd-success: #16a34a;
+	--dd-success-bg: #f0fdf4;
+	--dd-success-fg: #15803d;
+	--dd-danger: #dc2626;
+	--dd-danger-bg: #fef2f2;
+	--dd-danger-fg: #b91c1c;
+	--dd-warning: #d97706;
+	--dd-warning-bg: #fffbeb;
+	--dd-warning-fg: #b45309;
+	--dd-info: #2563eb;
+	--dd-info-bg: #eff6ff;
+	--dd-info-fg: #1d4ed8;
+	--dd-neutral-bg: #f4f4f5;
+	--dd-neutral-fg: #52525b;
+
+	/* — Proportion bars — the kept segment is solid accent, the lost segment a
+	   quiet tint. Mono on purpose: a red "loss" segment reads as an alarm on
+	   every row of a funnel, when most of the funnel is normal attrition. — */
+	--dd-bar-kept: #18181b;
+	--dd-bar-lost: #d4d4d8;
+	--dd-bar-track: #f1f1f3;
+
+	/* — Spacing (4px scale) — */
+	--dd-space-1: 4px;
+	--dd-space-2: 8px;
+	--dd-space-3: 12px;
+	--dd-space-4: 16px;
+	--dd-space-6: 24px;
+	--dd-space-8: 32px;
+
+	/* — Radius — */
+	--dd-radius-sm: 4px;
+	--dd-radius-md: 8px;
+	--dd-radius-pill: 999px;
+
+	/* — Typography — */
+	--dd-text-xs: 11px;
+	--dd-text-sm: 12px;
+	--dd-text-base: 13px;
+	--dd-text-md: 14px;
+	--dd-text-xl: 21px;
+
+	/* — Elevation — `xs` lifts a card off the page, `md` floats a panel over
+	   one. There is deliberately nothing between them: a third step invites
+	   picking a shadow by feel instead of by what is stacked on what. — */
+	--dd-shadow-xs: 0 1px 2px rgba(24, 24, 27, 0.04);
+	--dd-shadow-md: 0 4px 12px rgba(24, 24, 27, 0.09);
+
+	/* — Motion — */
+	--dd-ease-fast: 0.12s ease;
+
+	/* Page-level layout.
+	 *
+	 * The horizontal padding is not optional: Desk's `.layout-main-section` has
+	 * none of its own, so without it the first card's border sits flush against
+	 * the sidebar and the window edge with no gutter at all. */
+	color: var(--dd-text);
+	font-size: var(--dd-text-base);
+	line-height: 1.5;
+	padding: var(--dd-space-3) var(--dd-space-4) var(--dd-space-8);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * §2 · LAYOUT
+ *
+ * `.dd-grid` is the equal-column grid; `.dd-split` is the
+ * two-column one for a pair of panels read side by side.
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.dd-page .dd-grid {
+	display: grid;
+	gap: var(--dd-space-3);
+	margin-bottom: var(--dd-space-3);
+	align-items: start;
+}
+.dd-page .dd-grid-2 {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.dd-page .dd-grid-3 {
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.dd-page .dd-grid-4 {
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.dd-page .dd-grid-5 {
+	grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+/* Equal columns, not 1.3/1: the bars are capped in width anyway (§8), so extra
+   room on the left goes to whitespace, while the right column carries a
+   truncated failure reason that uses every pixel it is given. */
+.dd-page .dd-split {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--dd-space-3);
+	margin-bottom: var(--dd-space-3);
+	align-items: start;
+}
+/* Stacks several cards into ONE column of a split. Two panels of bars side by
+   side with a third below them left the third card 900px wide around 660px of
+   content — a band of empty card, which is what the layout is for avoiding. */
+.dd-page .dd-stack {
+	display: flex;
+	flex-direction: column;
+	gap: var(--dd-space-3);
+	min-width: 0;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * §3 · HEADER
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.dd-page .dd-header {
+	border-bottom: 1px solid var(--dd-border);
+	padding-bottom: var(--dd-space-3);
+	margin-bottom: var(--dd-space-4);
+}
+.dd-page .dd-header h2 {
+	font-size: var(--dd-text-xl);
+	font-weight: 650;
+	letter-spacing: -0.02em;
+	color: var(--dd-text);
+	margin: 0;
+}
+.dd-page .dd-header-meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--dd-space-4);
+	margin-top: var(--dd-space-2);
+	font-size: var(--dd-text-sm);
+	color: var(--dd-text-muted);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * §4 · SECTION TITLES
+ *
+ * The 2px rule to the left is the accent's only structural appearance. It
+ * marks where a section starts; it is not decoration and does not repeat.
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.dd-page .dd-section-title {
+	display: flex;
+	align-items: center;
+	gap: var(--dd-space-2);
+	font-size: var(--dd-text-md);
+	font-weight: 600;
+	color: var(--dd-text);
+	letter-spacing: -0.01em;
+	margin: var(--dd-space-6) 0 var(--dd-space-3);
+}
+.dd-page .dd-section-title::before {
+	content: "";
+	width: 2px;
+	height: 15px;
+	border-radius: 1px;
+	background: var(--dd-accent);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * §5 · CARDS
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.dd-page .dd-card {
+	background: var(--dd-surface);
+	border: 1px solid var(--dd-border);
+	border-radius: var(--dd-radius-md);
+	padding: var(--dd-space-3) var(--dd-space-4);
+	min-width: 0;
+}
+.dd-page .dd-card-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var(--dd-space-3);
+	margin-bottom: var(--dd-space-3);
+}
+.dd-page .dd-card-title {
+	font-size: var(--dd-text-base);
+	font-weight: 600;
+	color: var(--dd-text);
+	margin: 0;
+}
+.dd-page .dd-card-hint {
+	font-size: var(--dd-text-xs);
+	font-weight: 400;
+	color: var(--dd-text-muted);
+	text-align: right;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * §6 · KPI CARDS
+ *
+ * The status dot is the only per-card colour and it is opt-in: a plain KPI
+ * carries none, so a dot on screen always means something was flagged.
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.dd-page .dd-kpi {
+	position: relative;
+	background: var(--dd-surface);
+	border: 1px solid var(--dd-border);
+	border-radius: var(--dd-radius-md);
+	padding: 10px var(--dd-space-3);
+	box-shadow: var(--dd-shadow-xs);
+	min-width: 0;
+}
+.dd-page .dd-kpi-label {
+	display: flex;
+	align-items: center;
+	font-size: var(--dd-text-xs);
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--dd-text-muted);
+}
+.dd-page .dd-kpi-value {
+	font-size: var(--dd-text-xl);
+	font-weight: 650;
+	line-height: 1.2;
+	letter-spacing: -0.03em;
+	color: var(--dd-text);
+	font-variant-numeric: tabular-nums;
+}
+.dd-page .dd-kpi-sub {
+	font-size: var(--dd-text-xs);
+	color: var(--dd-text-muted);
+	margin-top: 2px;
+}
+.dd-page .dd-kpi-dot {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+}
+.dd-page .dd-kpi-dot-danger {
+	background: var(--dd-danger);
+}
+.dd-page .dd-kpi-dot-warning {
+	background: var(--dd-warning);
+}
+.dd-page .dd-kpi-dot-success {
+	background: var(--dd-success);
+}
+.dd-page .dd-kpi-dot-info {
+	background: var(--dd-info);
+}
+
+/* Delta chip — sits beside the value. Flat is neutral on purpose: the
+   good/bad reading only means something once something actually moved. */
+.dd-page .dd-delta {
+	display: inline-block;
+	font-size: var(--dd-text-xs);
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: 0;
+	padding: 1px 7px;
+	margin-left: var(--dd-space-2);
+	border-radius: var(--dd-radius-pill);
+	vertical-align: middle;
+}
+.dd-page .dd-delta-up {
+	background: var(--dd-success-bg);
+	color: var(--dd-success-fg);
+}
+.dd-page .dd-delta-down {
+	background: var(--dd-danger-bg);
+	color: var(--dd-danger-fg);
+}
+.dd-page .dd-delta-flat {
+	background: var(--dd-neutral-bg);
+	color: var(--dd-neutral-fg);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * §7 · PILLS
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.dd-page .dd-pill {
+	display: inline-block;
+	padding: 1px 7px;
+	border-radius: var(--dd-radius-pill);
+	font-size: var(--dd-text-xs);
+	font-weight: 600;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+	background: var(--dd-neutral-bg);
+	color: var(--dd-neutral-fg);
+}
+.dd-page .dd-pill-danger {
+	background: var(--dd-danger-bg);
+	color: var(--dd-danger-fg);
+}
+.dd-page .dd-pill-warning {
+	background: var(--dd-warning-bg);
+	color: var(--dd-warning-fg);
+}
+.dd-page .dd-pill-success {
+	background: var(--dd-success-bg);
+	color: var(--dd-success-fg);
+}
+.dd-page .dd-pill-info {
+	background: var(--dd-info-bg);
+	color: var(--dd-info-fg);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * §8 · PROPORTION BARS
+ *
+ * Deliberately HTML and not a charting library. A chart auto-scales its axis,
+ * so a five-row funnel topping out at 2 visits draws ticks at half a visit; it
+ * sizes to its container rather than its content, so five rows cost 300px; and
+ * it puts the value in a tooltip, so every number needs a hover to read. All
+ * three are wrong for a proportion bar. Reach for the `chart` panel when the
+ * data has a real scale — a time series, a distribution — not for a handful of
+ * parts of a whole.
+ *
+ * The three columns are fixed so label, track and figures line up down the
+ * whole block — the columns ARE the reading aid, and a track that starts at a
+ * different x on every row cannot be compared by eye.
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* Capped, not full-bleed. A proportion bar is read by comparing lengths, and
+   past roughly this width the eye stops comparing and just sees long stripes —
+   the full-page drop-off panel drew 1300px tracks for a max of 2. The cap sits
+   just above the width of one split column, so on a normal window it costs no
+   visible slack and only bites on an unusually wide screen. Both bar panels
+   share a column for the same reason: tracks of different lengths side by side
+   imply a shared scale that does not exist. */
+.dd-page .dd-bars {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	max-width: 780px;
+}
+/* The figures column is sized for the LONGEST rate string the funnel produces
+   ("— of completed signups"), not for the count. Size it to the count and the
+   rate simply overflows the column into the card's padding, which is what put
+   "100% of visits" hard against the neighbouring panel. */
+.dd-page .dd-bar {
+	display: grid;
+	grid-template-columns: var(--dd-bar-label, 150px) minmax(0, 1fr) 132px;
+	gap: var(--dd-space-2);
+	align-items: center;
+	min-height: 24px;
+}
+.dd-page .dd-bar-label {
+	font-size: var(--dd-text-sm);
+	color: var(--dd-text);
+	text-align: right;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.dd-page .dd-bar-track {
+	display: flex;
+	height: 10px;
+	border-radius: 2px;
+	background: var(--dd-bar-track);
+	overflow: hidden;
+}
+.dd-page .dd-bar-kept {
+	background: var(--dd-bar-kept);
+}
+.dd-page .dd-bar-lost {
+	background: var(--dd-bar-lost);
+}
+.dd-page .dd-bar-figures {
+	display: flex;
+	align-items: baseline;
+	justify-content: flex-end;
+	gap: var(--dd-space-2);
+}
+.dd-page .dd-bar-count {
+	font-size: var(--dd-text-base);
+	font-weight: 600;
+	color: var(--dd-text);
+	font-variant-numeric: tabular-nums;
+}
+.dd-page .dd-bar-rate {
+	font-size: var(--dd-text-xs);
+	color: var(--dd-text-muted);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.dd-page .dd-legend {
+	display: flex;
+	gap: var(--dd-space-4);
+	margin-top: var(--dd-space-3);
+	padding-top: var(--dd-space-2);
+	border-top: 1px solid var(--dd-border-subtle);
+	font-size: var(--dd-text-xs);
+	color: var(--dd-text-muted);
+}
+.dd-page .dd-key {
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 2px;
+	margin-right: var(--dd-space-1);
+}
+.dd-page .dd-key-kept {
+	background: var(--dd-bar-kept);
+}
+.dd-page .dd-key-lost {
+	background: var(--dd-bar-lost);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * §9 · STATUS ROWS — a list where each row carries a state, a reason and a
+ * figure. The 2px stripe is the state; it is the one place a row is coloured.
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* The last column is sized for a rate plus a short denominator ("50% of visits")
+   on ONE line. At 66px it wrapped to two, which grew the row until the wrapped
+   text sat under the sparkline beside it. The rate is `nowrap` below as well,
+   so a longer denominator ellipses rather than re-wrapping. */
+.dd-page .dd-row {
+	display: grid;
+	grid-template-columns: 2px minmax(0, 1fr) 56px 88px;
+	gap: var(--dd-space-2);
+	align-items: center;
+	padding: var(--dd-space-2) 0;
+	border-bottom: 1px solid var(--dd-border-subtle);
+}
+.dd-page .dd-row:last-child {
+	border-bottom: 0;
+}
+.dd-page .dd-stripe {
+	align-self: stretch;
+	min-height: 26px;
+	border-radius: 1px;
+	background: var(--dd-border-strong);
+}
+.dd-page .dd-row-danger .dd-stripe {
+	background: var(--dd-danger);
+}
+.dd-page .dd-row-warning .dd-stripe {
+	background: var(--dd-warning);
+}
+.dd-page .dd-row-success .dd-stripe {
+	background: var(--dd-success);
+}
+.dd-page .dd-row-main {
+	min-width: 0;
+}
+.dd-page .dd-row-name {
+	display: flex;
+	align-items: center;
+	gap: var(--dd-space-2);
+	font-size: var(--dd-text-base);
+	font-weight: 600;
+	color: var(--dd-text);
+}
+.dd-page .dd-row-why {
+	font-size: var(--dd-text-xs);
+	color: var(--dd-text-muted);
+	margin-top: 1px;
+	/* The reason is truncated at the source and still runs long for a row. One
+	   line, with the full text on the title attribute, beats wrapping. */
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.dd-page .dd-row-links {
+	display: flex;
+	gap: var(--dd-space-3);
+	margin-top: 2px;
+	font-size: var(--dd-text-xs);
+}
+.dd-page .dd-row-figures {
+	text-align: right;
+}
+.dd-page .dd-row-count {
+	font-size: var(--dd-text-md);
+	font-weight: 600;
+	line-height: 1.2;
+	color: var(--dd-text);
+	font-variant-numeric: tabular-nums;
+}
+.dd-page .dd-row-rate {
+	font-size: var(--dd-text-xs);
+	color: var(--dd-text-muted);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.dd-page .dd-spark {
+	height: 18px;
+	min-width: 0;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * §10 · TABLES
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.dd-page .dd-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: var(--dd-text-base);
+}
+.dd-page .dd-table thead th {
+	background: var(--dd-surface-alt);
+	color: var(--dd-text-muted);
+	font-size: var(--dd-text-xs);
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	text-align: left;
+	padding: var(--dd-space-2) var(--dd-space-3);
+	border-top: 1px solid var(--dd-border);
+	border-bottom: 1px solid var(--dd-border);
+}
+.dd-page .dd-table tbody td {
+	padding: var(--dd-space-2) var(--dd-space-3);
+	border-bottom: 1px solid var(--dd-border-subtle);
+	color: var(--dd-text);
+}
+.dd-page .dd-table tbody tr:last-child td {
+	border-bottom: 0;
+}
+.dd-page .dd-num {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * §11 · PRESET CHIPS — quick date ranges
+ *
+ * `appearance: none` is load-bearing: a bare <button> otherwise picks up the
+ * OS's 3D chrome in some browsers and the strip stops looking like one control.
+ *
+ * The strip renders INSIDE the page body, not in the Desk page head. Frappe's
+ * head is outside `.dd-page`, so a control placed there would resolve
+ * none of the §1 tokens and paint with whatever the Desk happened to inherit.
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.dd-page .dd-presets {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--dd-space-1);
+}
+.dd-page .dd-preset {
+	appearance: none;
+	-webkit-appearance: none;
+	font-family: inherit;
+	font-size: var(--dd-text-xs);
+	font-weight: 500;
+	line-height: 1.2;
+	padding: 4px 10px;
+	border-radius: var(--dd-radius-pill);
+	border: 1px solid var(--dd-border);
+	background: var(--dd-surface);
+	color: var(--dd-text-muted);
+	cursor: pointer;
+	user-select: none;
+	transition:
+		background var(--dd-ease-fast),
+		border-color var(--dd-ease-fast),
+		color var(--dd-ease-fast);
+}
+.dd-page .dd-preset:hover {
+	border-color: var(--dd-border-strong);
+	color: var(--dd-text);
+}
+.dd-page .dd-preset.is-active {
+	background: var(--dd-accent);
+	border-color: var(--dd-accent);
+	color: var(--dd-accent-contrast);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * §12 · INFO EXPLAINERS — ⓘ icon + click-to-open popover
+ *
+ * The shared "how is this number calculated?" affordance. Put one after any
+ * KPI label, card title or section title; every number on a dashboard should
+ * be able to explain itself, and the team learns the vocabulary by reading it.
+ *
+ * Hover is deliberately NOT a trigger — this has to work on touch. It is a
+ * real <button>, so focus and Enter/Space come for free.
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.dd-page .dd-info-wrap {
+	position: relative;
+	display: inline-block;
+	vertical-align: middle;
+	margin-left: var(--dd-space-1);
+	line-height: 0;
+}
+.dd-page .dd-info {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	padding: 0;
+	border: 0;
+	background: none;
+	cursor: pointer;
+	touch-action: manipulation;
+	text-transform: none;
+	letter-spacing: normal;
+	-webkit-tap-highlight-color: transparent;
+}
+.dd-page .dd-info-glyph {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 14px;
+	height: 14px;
+	border: 1px solid var(--dd-border-strong);
+	border-radius: 50%;
+	background: var(--dd-surface);
+	color: var(--dd-text-subtle);
+	font-family: Georgia, "Times New Roman", serif;
+	font-size: 10px;
+	font-style: italic;
+	font-weight: 700;
+	line-height: 1;
+	transition:
+		color var(--dd-ease-fast),
+		border-color var(--dd-ease-fast);
+}
+.dd-page .dd-info:hover .dd-info-glyph,
+.dd-page .dd-info[aria-expanded="true"] .dd-info-glyph {
+	color: var(--dd-text);
+	border-color: var(--dd-accent);
+}
+.dd-page .dd-info:focus-visible {
+	outline: 2px solid var(--dd-accent);
+	outline-offset: 1px;
+	border-radius: 50%;
+}
+
+/* The panel floats over later cards, so it needs a z-index that beats the
+   positioned-but-unlayered KPI siblings. Text properties are reset because the
+   host label is uppercase, letter-spaced and muted. */
+.dd-page .dd-info-pop {
+	position: absolute;
+	top: calc(100% + 5px);
+	left: 0;
+	z-index: 30;
+	display: block;
+	width: 280px;
+	max-width: min(280px, calc(100vw - 32px));
+	padding: var(--dd-space-3);
+	background: var(--dd-surface);
+	border: 1px solid var(--dd-border-strong);
+	border-radius: var(--dd-radius-md);
+	box-shadow: var(--dd-shadow-md);
+	text-align: left;
+	text-transform: none;
+	letter-spacing: normal;
+	white-space: normal;
+	line-height: 1.5;
+	cursor: default;
+}
+.dd-page .dd-info-pop[hidden] {
+	display: none;
+}
+/* Flipped when the panel would overflow the right edge of the viewport. */
+.dd-page .dd-info-pop-flip {
+	left: auto;
+	right: 0;
+}
+.dd-page .dd-info-pop-title {
+	display: block;
+	font-size: var(--dd-text-sm);
+	font-weight: 600;
+	color: var(--dd-text);
+	margin-bottom: 2px;
+}
+.dd-page .dd-info-pop-body {
+	display: block;
+	font-size: var(--dd-text-sm);
+	font-weight: 400;
+	color: var(--dd-text-muted);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * §13 · FOOTER, CAVEATS, STATES
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.dd-page .dd-caveat {
+	font-size: var(--dd-text-sm);
+	color: var(--dd-text-muted);
+	border-left: 2px solid var(--dd-border);
+	padding-left: var(--dd-space-3);
+	margin-bottom: var(--dd-space-4);
+}
+.dd-page .dd-footer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--dd-space-2);
+	margin-top: var(--dd-space-6);
+	padding-top: var(--dd-space-4);
+	border-top: 1px solid var(--dd-border);
+	font-size: var(--dd-text-xs);
+}
+.dd-page .dd-footer-label {
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--dd-text-muted);
+	margin-right: var(--dd-space-1);
+}
+.dd-page .dd-footer-link {
+	padding: 3px 9px;
+	border: 1px solid var(--dd-border);
+	border-radius: var(--dd-radius-sm);
+	background: var(--dd-surface);
+	color: var(--dd-text-muted);
+	text-decoration: none;
+	transition:
+		border-color var(--dd-ease-fast),
+		color var(--dd-ease-fast);
+}
+.dd-page .dd-footer-link:hover {
+	border-color: var(--dd-border-strong);
+	color: var(--dd-text);
+	text-decoration: none;
+}
+.dd-page .dd-empty {
+	color: var(--dd-text-subtle);
+	text-align: center;
+	padding: var(--dd-space-6) 0;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * §13b · DRILLABLE
+ *
+ * Applied by the renderer to anything whose spec carries a `drill`. It is a
+ * modifier, not a component: it sits ON a KPI, a bar, a row or a table cell and
+ * only adds the affordance.
+ *
+ * The renderer also stamps `role="link"` and `tabindex="0"`, and the drill
+ * layer binds Enter/Space — a click handler alone would make the whole
+ * drill-down feature mouse-only, which on a dashboard people live in all day is
+ * the difference between a feature and a demo.
+ *
+ * `:focus-visible` rather than `:focus`: a mouse click would otherwise leave a
+ * ring behind on every card the user merely pressed.
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.dd-page .dd-drillable {
+	cursor: pointer;
+	transition:
+		border-color var(--dd-ease-fast),
+		background var(--dd-ease-fast);
+}
+.dd-page .dd-drillable:hover {
+	border-color: var(--dd-border-strong);
+}
+/* A row and a bar have no border to shift, so they take a wash instead. The
+   negative inline margin plus matching padding lets the highlight extend into
+   the card's gutter, so the hover target looks like the whole row rather than a
+   stripe floating inside it. */
+.dd-page .dd-row.dd-drillable,
+.dd-page .dd-bar.dd-drillable {
+	margin-inline: calc(-1 * var(--dd-space-2));
+	padding-inline: var(--dd-space-2);
+	border-radius: var(--dd-radius-sm);
+}
+.dd-page .dd-row.dd-drillable:hover,
+.dd-page .dd-bar.dd-drillable:hover {
+	background: var(--dd-surface-alt);
+}
+.dd-page .dd-drillable:focus-visible {
+	outline: 2px solid var(--dd-accent);
+	outline-offset: 1px;
+	border-radius: var(--dd-radius-sm);
+}
+/* The chevron marks *which* things drill, so a user does not have to hunt by
+   hovering. It is glyph-free on purpose — a real character would be read by a
+   screen reader as content, and the row already announces as a link. */
+.dd-page .dd-drillable .dd-kpi-label::after,
+.dd-page .dd-drillable .dd-row-name::after {
+	content: "";
+	width: 5px;
+	height: 5px;
+	margin-left: var(--dd-space-1);
+	border-top: 1.5px solid currentcolor;
+	border-right: 1.5px solid currentcolor;
+	transform: rotate(45deg);
+	opacity: 0;
+	transition: opacity var(--dd-ease-fast);
+}
+.dd-page .dd-drillable:hover .dd-kpi-label::after,
+.dd-page .dd-drillable:focus-visible .dd-kpi-label::after,
+.dd-page .dd-drillable:hover .dd-row-name::after,
+.dd-page .dd-drillable:focus-visible .dd-row-name::after {
+	opacity: 0.55;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * §13c · CHART PANEL
+ *
+ * The mount point for an ECharts instance. It carries an explicit height
+ * because ECharts measures its container on init and a canvas has no intrinsic
+ * size — a chart in an auto-height box initialises at 0px and renders nothing,
+ * silently. The height is overridable per panel through `--dd-chart-height`.
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.dd-page .dd-chart {
+	width: 100%;
+	height: var(--dd-chart-height, 240px);
+	min-width: 0;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * §13d · LOADING / ERROR
+ *
+ * The skeleton exists so a refresh does not collapse the page to nothing and
+ * bounce the scroll position back to the top. It reuses the card border so the
+ * layout does not shift when real content replaces it.
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.dd-page .dd-skeleton {
+	border: 1px solid var(--dd-border);
+	border-radius: var(--dd-radius-md);
+	background: var(--dd-surface-alt);
+	height: 72px;
+	animation: dd-pulse 1.4s ease-in-out infinite;
+}
+@keyframes dd-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.55;
+	}
+}
+/* Respect the OS setting — a pulsing block is exactly the kind of motion that
+   triggers discomfort, and a static skeleton communicates just as well. */
+@media (prefers-reduced-motion: reduce) {
+	.dd-page .dd-skeleton {
+		animation: none;
+	}
+}
+.dd-page .dd-error {
+	border: 1px solid var(--dd-danger);
+	background: var(--dd-danger-bg);
+	color: var(--dd-danger-fg);
+	border-radius: var(--dd-radius-md);
+	padding: var(--dd-space-3) var(--dd-space-4);
+	font-size: var(--dd-text-sm);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * §14 · RESPONSIVE
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@media (max-width: 1200px) {
+	.dd-page .dd-grid-4,
+	.dd-page .dd-grid-5 {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}
+@media (max-width: 991px) {
+	.dd-page .dd-split {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.dd-page .dd-grid-3,
+	.dd-page .dd-grid-4,
+	.dd-page .dd-grid-5 {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.dd-page .dd-bar {
+		--dd-bar-label: 110px;
+	}
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * §15 · DARK THEME
+ *
+ * Gate: `frappe.ui.set_theme()` stamps `data-theme` on <html>, and "automatic"
+ * is RESOLVED to a concrete value before it is written — so `[data-theme=dark]`
+ * alone covers Light / Dark / Automatic. `data-theme-mode` holds the user's
+ * *choice* and must never be used for styling.
+ *
+ * Specificity: `[data-theme="dark"] .dd-page` (0,2,0) beats the §1 block
+ * `.dd-page` (0,1,0), so this section is purely additive — no §1 rule is
+ * edited and the light theme is untouched.
+ *
+ * The values are re-tuned, not inverted. Surfaces step UP from the Desk
+ * background so cards read as elevated; status tints become translucent washes
+ * with brighter ink, because the light theme's pale pastels turn to glare on
+ * dark. The accent inverts to near-white — it is the only token that flips
+ * rather than shifts, and that is what makes the system monochrome in both
+ * themes rather than black-on-light and black-on-dark.
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+[data-theme="dark"] .dd-page {
+	--dd-surface: #1f1f1f;
+	--dd-surface-alt: #262626;
+	--dd-border: #2f2f2f;
+	--dd-border-subtle: #272727;
+	--dd-border-strong: #454545;
+
+	--dd-text: #f4f4f5;
+	--dd-text-muted: #a1a1aa;
+	--dd-text-subtle: #71717a;
+
+	--dd-accent: #fafafa;
+	--dd-accent-contrast: #18181b;
+
+	--dd-success: #22c55e;
+	--dd-success-bg: rgba(34, 197, 94, 0.16);
+	--dd-success-fg: #4ade80;
+	--dd-danger: #ef4444;
+	--dd-danger-bg: rgba(239, 68, 68, 0.16);
+	--dd-danger-fg: #f87171;
+	--dd-warning: #f59e0b;
+	--dd-warning-bg: rgba(245, 158, 11, 0.16);
+	--dd-warning-fg: #fbbf24;
+	--dd-info: #3b82f6;
+	--dd-info-bg: rgba(59, 130, 246, 0.16);
+	--dd-info-fg: #60a5fa;
+	--dd-neutral-bg: rgba(255, 255, 255, 0.08);
+	--dd-neutral-fg: #d4d4d8;
+
+	/* The kept segment is the bright one in both themes — it is the subject of
+	   the bar. Inverting only these two would make the loss segment shout. */
+	--dd-bar-kept: #e4e4e7;
+	--dd-bar-lost: #4b4b4f;
+	--dd-bar-track: #272727;
+
+	/* Slate shadows vanish on dark; use black. */
+	--dd-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+	--dd-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.55);
+}
