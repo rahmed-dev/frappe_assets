@@ -14,6 +14,7 @@
 
 export { Dashboard } from "./controller.js";
 export { render } from "./render.js";
-export { chart, sparkline, palette, token } from "./charts.js";
+export { chart, sparkline, palette, token, colour, markers, bounds } from "./charts.js";
 export { follow as drill } from "./drill.js";
+export { tone, TONES } from "./tone.js";
 export * as fmt from "./format.js";

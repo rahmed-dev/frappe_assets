@@ -395,6 +395,28 @@ body:not(.full-width) .dd-host .container {
 	color: var(--dd-neutral-fg);
 }
 
+/* Fields — a label/value grid for what a record SAYS about itself.
+   Shares the KPI label so the two read as one family, and then deliberately
+   parts company on the value: body size, normal weight, no tabular figures.
+   A serial number set at KPI size claims to be the headline of the page.
+   No card of its own either — a field grid lives inside one, next to the other
+   things known about the same record, and boxing each field fragments that. */
+.dd-page .dd-field {
+	min-width: 0;
+}
+.dd-page .dd-field-label {
+	font-size: var(--dd-text-xs);
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--dd-text-muted);
+}
+.dd-page .dd-field-value {
+	font-size: var(--dd-text-base);
+	color: var(--dd-text);
+	overflow-wrap: anywhere;
+}
+
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  * §7 · PILLS
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
@@ -651,6 +673,9 @@ body:not(.full-width) .dd-host .container {
 .dd-page .dd-row-success .dd-stripe {
 	background: var(--dd-success);
 }
+.dd-page .dd-row-info .dd-stripe {
+	background: var(--dd-info);
+}
 .dd-page .dd-row-main {
 	min-width: 0;
 }
@@ -729,9 +754,47 @@ body:not(.full-width) .dd-host .container {
 .dd-page .dd-table tbody tr:last-child td {
 	border-bottom: 0;
 }
-.dd-page .dd-num {
+/* The header rule above sets `text-align: left` at (0,3,1), which beat a lone
+   `.dd-num` (0,2,0) — so a numeric column right-aligned its figures and left its
+   heading over the gap. It read as a stray column rather than as a bug. */
+.dd-page .dd-num,
+.dd-page .dd-table thead th.dd-num {
 	text-align: right;
 	font-variant-numeric: tabular-nums;
+}
+.dd-page .dd-mid,
+.dd-page .dd-table thead th.dd-mid {
+	text-align: center;
+}
+
+/* A value that carries the verdict — a reading out of range, a field two systems
+   disagree about. The ink shifts and nothing else does: a tinted background
+   turns a table with one bad column into a striped wall, and the rows stop being
+   scannable at exactly the moment it matters.
+   `-fg` rather than the solid token, because these sit as text on the surface
+   and the solid one is tuned for a stripe or a bar. Both are re-tuned in §15, so
+   this needs no dark-block entry of its own.
+
+   Each is stated TWICE, and the second selector is the load-bearing one: the
+   `tbody td` rule above sets `color` at (0,3,1) and a lone `.dd-page .dd-cell-*`
+   is (0,2,0), so a toned table cell silently rendered in body ink. It looked
+   like the tone had not been passed. Used outside a table — a field value, a
+   figure in a card — the short selector is the one that applies. */
+.dd-page .dd-cell-success,
+.dd-page .dd-table tbody td.dd-cell-success {
+	color: var(--dd-success-fg);
+}
+.dd-page .dd-cell-warning,
+.dd-page .dd-table tbody td.dd-cell-warning {
+	color: var(--dd-warning-fg);
+}
+.dd-page .dd-cell-danger,
+.dd-page .dd-table tbody td.dd-cell-danger {
+	color: var(--dd-danger-fg);
+}
+.dd-page .dd-cell-info,
+.dd-page .dd-table tbody td.dd-cell-info {
+	color: var(--dd-info-fg);
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

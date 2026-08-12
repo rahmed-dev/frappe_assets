@@ -45,6 +45,7 @@ import {
 	MarkLineComponent,
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
+import { tone as tone_of } from "./tone.js";
 
 // The registered set is what `demo/index.html` draws, and the two are meant to
 // stay in step: a gallery advertising a chart the toolkit cannot render is a
@@ -130,6 +131,109 @@ export function palette() {
 			token("--dd-series-5", dark ? "#46464e" : "#dcdce0"),
 		],
 	};
+}
+
+/**
+ * The literal colour a tone means, from an already-resolved palette.
+ *
+ * For the series that genuinely carries a verdict — a bar whose height IS the
+ * reading and whose colour IS the grade. That is the sanctioned exception to the
+ * monochrome ramp, and going through the tone map is what keeps the bar, the
+ * pill beside it and the cell below it saying the same thing in the same red.
+ */
+export function colour(colours, name) {
+	return colours[tone_of(name).palette];
+}
+
+/**
+ * Horizontal reference lines — a threshold, a target, a contract minimum.
+ *
+ * `list` is `[{value, tone, label}]`. Returns `undefined` for an empty list, so
+ * a caller can hand it straight to `series.markLine` without asking first.
+ *
+ * `silent` because a reference line is furniture: it has no datum behind it, and
+ * a tooltip on one shows the number that is already printed next to it. Dashed
+ * because a solid line at the same weight as a series reads as another series —
+ * on a chart with one line, the eye picks the wrong one about half the time.
+ *
+ * ECharts draws a `markLine` **per series**, so a caller with several lines puts
+ * this on one of them. Repeating it stacks identical dashes at the same height,
+ * which is invisible until they disagree.
+ */
+export function markers(list, colours) {
+	if (!list || !list.length) {
+		return undefined;
+	}
+
+	return {
+		silent: true,
+		symbol: "none",
+		data: list.map((marker) => {
+			const ink = colour(colours, marker.tone);
+			return {
+				yAxis: marker.value,
+				lineStyle: { type: "dashed", width: 1, color: ink },
+				label: marker.label
+					? { show: true, formatter: marker.label, position: "insideEndTop", color: ink }
+					: { show: false },
+			};
+		}),
+	};
+}
+
+/**
+ * Axis bounds that leave every reading somewhere to be drawn.
+ *
+ * ECharts' own `scale: true` fits the axis to the data exactly, which is right
+ * for a trend and wrong for bars: the smallest value lands on the floor with no
+ * height at all and reads as zero.
+ *
+ * Options, all optional:
+ *   `include`  values to pull into view — pass the marker heights, because a
+ *              threshold outside the axis is a verdict the reader cannot see
+ *   `pad`      fraction of the spread to add at each end (default 0.1), or
+ *              `[below, above]` to pad the two ends differently. `[0, 0.1]` is
+ *              the one every bar chart wants: bars are measured from a baseline,
+ *              so padding under the baseline puts an axis label below zero on a
+ *              quantity that cannot go there
+ *   `step`     round the bounds outward to a multiple of this (default 0.5), and
+ *              the floor for the padding, so a flat series still gets an axis.
+ *              A padded bound is an arbitrary number already; printing it as
+ *              9.5238 only makes it look like a measurement. `0` leaves the
+ *              bounds unrounded.
+ *
+ * Falls back to `{scale: true}` when there is nothing to measure — no readings,
+ * or a flat series with no step to give it height. Handing ECharts its own
+ * default is better than inventing a range around a single number.
+ */
+export function bounds(values, options = {}) {
+	const numbers = (values || []).filter((value) => typeof value === "number" && isFinite(value));
+	if (!numbers.length) {
+		return { scale: true };
+	}
+
+	const step = options.step != null ? options.step : 0.5;
+	const all = numbers.concat(options.include || []);
+	const low = Math.min(...all);
+	const high = Math.max(...all);
+
+	const asked = options.pad != null ? options.pad : 0.1;
+	const [below, above] = Array.isArray(asked) ? asked : [asked, asked];
+	// The floor at `step` is what gives a flat series an axis at all — there is no
+	// spread to take a tenth of. An end the caller padded by zero stays at zero:
+	// asking for no room below the baseline and getting half a unit of it is the
+	// negative axis label this exists to prevent.
+	const room = (fraction) => (fraction ? Math.max((high - low) * fraction, step) : 0);
+	const min = low - room(below);
+	const max = high + room(above);
+
+	if (min === max) {
+		return { scale: true };
+	}
+	if (!step) {
+		return { min, max };
+	}
+	return { min: Math.floor(min / step) * step, max: Math.ceil(max / step) * step };
 }
 
 /**

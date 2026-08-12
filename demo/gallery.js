@@ -23,7 +23,8 @@
 import "./frappe-stub.js";
 
 import { render } from "../dashboard/index.js";
-import { chart, sparkline, token } from "../dashboard/charts.js";
+import { chart, sparkline, token, colour, markers, bounds } from "../dashboard/charts.js";
+import { blank } from "../dashboard/format.js";
 
 /* ─────────────────────────────────────────────────────────── sample data ── */
 
@@ -49,6 +50,19 @@ const OPENED = walk(7, 30, 62, 18);
 const RESOLVED = walk(21, 30, 58, 16);
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const HOURS = ["00", "03", "06", "09", "12", "15", "18", "21"];
+
+/* A measurement with a rule attached, for the panels where a value is graded:
+   response time per node, against the two limits it is judged by. */
+const NODES = ["edge-01", "edge-02", "edge-03", "edge-04", "edge-05", "edge-06", "edge-07"];
+const LATENCY = [42, 61, 88, 104, 152, 210, 73];
+const LIMITS = [
+	{ value: 100, tone: "warning", label: "target" },
+	{ value: 200, tone: "danger", label: "breach" },
+];
+const grade = (ms) => (ms >= 200 ? "danger" : ms >= 100 ? "warning" : "success");
+/* The word for each tone. A pill says the state, the tone colours it — the two
+   have to agree, and reading them off one grade is how they stay agreeing. */
+const STATE = { success: "Healthy", warning: "Slow", danger: "Breached" };
 
 /* ────────────────────────────────────────────────────────── chart options ── */
 
@@ -104,6 +118,34 @@ const CHARTS = {
 		yAxis: { type: "value" },
 		series: [{ type: "bar", data: [412, 287, 196, 143, 88], barMaxWidth: 34 }],
 	},
+
+	// The sanctioned exception to the monochrome ramp: each bar's colour IS its
+	// verdict, so it comes from the tone map rather than from series position.
+	// `markers` draws the thresholds those verdicts were read against, and
+	// `bounds` is what keeps the higher of them on the axis — a threshold drawn
+	// off the top of the chart is a rule the reader is being judged by and cannot
+	// see.
+	graded: (colours) => ({
+		xAxis: { type: "category", data: NODES },
+		// Zero is in `include` because these are BARS: their length is the reading,
+		// and an axis that starts at 25 makes 42 ms look like a fifth of 104 ms.
+		// A line chart is the opposite case and should stay fitted.
+		yAxis: {
+			type: "value",
+			...bounds(LATENCY, { include: [0, ...LIMITS.map((l) => l.value)], pad: [0, 0.1] }),
+		},
+		series: [
+			{
+				type: "bar",
+				barMaxWidth: 34,
+				data: LATENCY.map((value) => ({
+					value,
+					itemStyle: { color: colour(colours, grade(value)) },
+				})),
+				markLine: markers(LIMITS, colours),
+			},
+		],
+	}),
 
 	// Horizontal is a category y-axis, not a chart type. Worth showing, because
 	// frappe-charts has no horizontal bar at all and that gap is what sent this
@@ -446,6 +488,57 @@ const SPEC = {
 			],
 		},
 
+		{ type: "section", title: "Fields and tables" },
+		{
+			type: "split",
+			columns: [
+				{
+					type: "card",
+					title: "Node edge-06",
+					hint: "what the record says about itself",
+					body: [
+						{
+							type: "fields",
+							columns: 3,
+							items: [
+								{ label: "Region", value: "eu-west" },
+								{ label: "Uplink", value: "1 Gbps" },
+								{ label: "Firmware", value: "4.2.1" },
+								{ label: "Last seen", value: "2 min ago" },
+								{ label: "Response", value: "210 ms", tone: "danger" },
+								{ label: "Serial", value: blank(null) },
+							],
+						},
+						{
+							type: "text",
+							text: "An unanswered field prints an em dash, never a zero — see fmt.blank.",
+							style: "caveat",
+						},
+					],
+				},
+				{
+					type: "card",
+					title: "Nodes",
+					hint: "a tone on the cell that carries the finding",
+					body: {
+						type: "table",
+						columns: [
+							{ label: "Node", key: "node" },
+							{ label: "Response", key: "response", numeric: true },
+							{ label: "State", key: "state", align: "center" },
+						],
+						rows: NODES.map((node, i) => ({
+							node,
+							// A tone tints the reading; a pill is for a cell holding a
+							// state rather than a measurement. Both keep their escaping.
+							response: { value: `${LATENCY[i]} ms`, tone: grade(LATENCY[i]) },
+							state: { value: STATE[grade(LATENCY[i])], tone: grade(LATENCY[i]), pill: true },
+						})),
+					},
+				},
+			],
+		},
+
 		{ type: "section", title: "Cartesian" },
 		{
 			type: "grid",
@@ -456,6 +549,7 @@ const SPEC = {
 				showcase("Bar", "categories on the x-axis", "bars"),
 				showcase("Bar — horizontal", "a category y-axis, not a chart type", "horizontal_bars"),
 				showcase("Bar — stacked", "one stack id per series", "stacked_bars"),
+				showcase("Bar — graded", "colour is the verdict, dashed lines the rule", "graded"),
 				showcase("Scatter", "two measures against each other", "scatter"),
 			],
 		},

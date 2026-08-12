@@ -1,29 +1,29 @@
 # frappe_assets
 
-Shared assets for Frappe/ERPNext apps. Three unrelated things live here; read
-only the section you are working in.
+The Desk dashboard toolkit for Frappe/ERPNext apps. One thing, two directories.
 
 | Directory | What it is | Consumed how |
 |---|---|---|
-| `dashboard/` | The Desk dashboard toolkit — a design system plus a spec renderer | `yarn add` this repo, then import |
+| `dashboard/` | The toolkit — a design system plus a spec renderer | `yarn add` this repo, then import |
 | `demo/` | The gallery: every panel and chart type on one page, no bench needed | `yarn demo`, open `demo/index.html` |
-| `server_scripts/` | Standalone Server Script bodies | Copy-pasted into a site's Server Script doc |
-| `console_scripts/` | One-off `bench console` snippets | Pasted into a console, never run unattended |
-| `docs/` | Framework notes | Read |
+
+**This repo is a front-end package and nothing else.** Server Script bodies,
+console snippets and framework notes moved to `rahmed-dev/dev_kb` under
+`frappe/`. Do not add them back: yarn clones an **entire** git dependency —
+`files: ["dashboard"]` does not apply — so anything here lands in the
+`node_modules` of every app that wants the toolkit.
 
 **This repo is public.** It is installed over plain HTTPS with no credentials,
 which is what lets a fresh bench run `yarn install` for a consuming app. Nothing
-site-specific, no keys and no customer data may land here — the snippet
-directories are the easy place to get that wrong.
+site-specific, no keys and no customer data may land here. The last thing removed
+from this repo was a diagnostic carrying a real employee's name and id.
 
 **Changing anything under `dashboard/` means re-running `yarn demo` and looking
 at the gallery.** It is the only place the chart types nobody has used yet are
-visible at all, and three of the bugs it has already caught were invisible on
-the one dashboard that exists. See `demo/README.md`.
-
-Everything below the first section is about `dashboard/` only. The snippet
-directories are deliberately *not* a package — they are text to paste, and
-turning them into code would imply a support contract this repo does not have.
+visible at all, and the bugs it has caught were invisible on the one dashboard
+that exists — most recently a toned table cell that rendered in body ink because
+`tbody td` outspecified it, which looked exactly like the tone never being
+passed. Both themes, every time.
 
 ---
 
@@ -106,6 +106,34 @@ resolves "automatic" to a concrete value *before* stamping that attribute, so
 `"automatic"`.
 
 ---
+
+## One tone vocabulary — `dashboard/tone.js`
+
+`success · warning · danger · info · quiet`, and every surface reads from it: a
+table cell, a KPI dot, a `rows` stripe, a pill, a chart series through
+`colour(palette, tone)`. Before it there were three vocabularies for the same
+idea — trend words in the renderer, bare `dd-kpi-dot-*` class names, and the
+palette's own keys — so nothing could share a colour with anything else and a
+new panel copied a class name and hoped.
+
+A tone states a **fact about the value**, never decoration; that is the same
+rule as the colour policy above, and this map is how a panel obeys it. `quiet`
+is the absence of a verdict and paints nothing: a value nobody graded must not
+read as "fine". Unknown names fall back to `quiet` instead of throwing, which is
+the opposite of what an unknown *panel type* does — a panel type is hand-written
+and a typo is a bug, while a tone usually arrives from a backend where an
+ungraded state is ordinary.
+
+Adding a tone means an entry there **and** the matching `dd-pill-*`, `dd-cell-*`,
+`dd-row-*` rules, or the map promises a colour the stylesheet does not paint.
+
+## `{type: "html"}` is a last resort, and colour is not a reason to use it
+
+Every other panel escapes through `fmt.esc`. When the `table` panel could not
+express a coloured cell, three tables on one consuming page were rebuilt as raw
+HTML strings for that alone — one of them printing values scraped off a
+supplier's portal, hand-escaping per call site. If a panel is one optional field
+short of doing the job, add the field.
 
 ## Class prefix
 

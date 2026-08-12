@@ -17,29 +17,38 @@
 
 import * as fmt from "./format.js";
 import { attrs } from "./drill.js";
+import { tone as tone_of } from "./tone.js";
 
-/** Status names a `rows` panel understands, mapped to the classes they paint. */
-const TONES = {
-	quiet: { row: "", pill: "", label: __("Quiet"), token: "--dd-text-subtle" },
-	rising: {
-		row: "dd-row-danger",
-		pill: "dd-pill-danger",
-		label: __("Rising"),
-		token: "--dd-danger",
-	},
-	easing: {
-		row: "dd-row-success",
-		pill: "dd-pill-success",
-		label: __("Easing"),
-		token: "--dd-success",
-	},
-	steady: {
-		row: "dd-row-warning",
-		pill: "dd-pill-warning",
-		label: __("Steady"),
-		token: "--dd-warning",
-	},
+/**
+ * The direction words a `rows` panel understands, on top of the tones.
+ *
+ * A trend is not a status: "rising" is only bad news because the panel counts
+ * things going wrong, and the word the reader needs is the direction, not the
+ * verdict. So these keep their own labels and borrow a tone for the colour.
+ *
+ * A `rows` item may name either — `tone: "rising"` and `tone: "danger"` both
+ * work — because a panel listing failures thinks in directions and a panel
+ * listing states does not, and neither should have to translate.
+ */
+const TRENDS = {
+	quiet: { tone: "quiet", label: __("Quiet") },
+	rising: { tone: "danger", label: __("Rising") },
+	easing: { tone: "success", label: __("Easing") },
+	steady: { tone: "warning", label: __("Steady") },
 };
+
+/**
+ * The classes and the default label for a name that may be a trend or a tone.
+ *
+ * A tone has no label of its own — `danger` is a colour, not a word for a
+ * reader — so one falls back to nothing and the pill is left off. Printing the
+ * tone name is the tempting alternative and it is wrong: `DANGER` in a pill
+ * where the caller meant to say `Suspended` reads as a system message.
+ */
+function reading(name) {
+	const trend = TRENDS[name];
+	return { ...tone_of(trend ? trend.tone : name), label: trend ? trend.label : "" };
+}
 
 /**
  * A render pass.
@@ -128,6 +137,29 @@ function panel_kpis(node) {
 	return `<div class="dd-grid dd-grid-${columns}">${cards.join("")}</div>`;
 }
 
+/**
+ * `{type: "fields", columns: 4, items: [{label, value, tone}]}`
+ *
+ * A label-and-value grid — what a record says about itself. Deliberately not
+ * `kpis`: that panel sets its value large and heavy because a KPI is a *figure*
+ * a reader is meant to land on, and a serial number rendered at that size reads
+ * as the most important thing on the page.
+ *
+ * `tone` tints the value for a field that is itself a finding.
+ */
+function panel_fields(node) {
+	const columns = node.columns || node.items.length || 1;
+	const cells = node.items.map((item) => {
+		const painted = tone_of(item.tone);
+		return `
+			<div class="dd-field">
+				<div class="dd-field-label">${fmt.esc(item.label)}</div>
+				<div class="dd-field-value ${item.tone ? painted.cell : ""}">${fmt.esc(item.value)}</div>
+			</div>`;
+	});
+	return `<div class="dd-grid dd-grid-${columns}">${cells.join("")}</div>`;
+}
+
 /** `{type: "card", title, hint, explain, body: <node|node[]>}` */
 function panel_card(node) {
 	const hint = node.hint ? `<div class="dd-card-hint">${fmt.esc(node.hint)}</div>` : "";
@@ -209,16 +241,17 @@ function panel_bars(node) {
  * `{type: "rows", items: [{name, tone, status, why, links, count, rate, series, drill}]}`
  *
  * A list where each entry carries a state, a reason and a figure — the shape a
- * "what is going wrong" panel keeps arriving at. `tone` is a name from TONES, or
- * omit it and pass `series` to have the trend decide.
+ * "what is going wrong" panel keeps arriving at. `tone` is a trend word or a
+ * tone name (see TRENDS), or omit it and pass `series` to have the trend decide.
  */
 function panel_rows(node) {
 	const rows = node.items.map((item) => {
-		const tone = TONES[item.tone || fmt.trend(item.series)] || TONES.quiet;
+		const tone = reading(item.tone || fmt.trend(item.series));
+		const text = item.status || tone.label;
 		const status =
-			item.status === false
+			item.status === false || !text
 				? ""
-				: `<span class="dd-pill ${tone.pill}">${fmt.esc(item.status || tone.label)}</span>`;
+				: `<span class="dd-pill ${tone.pill}">${fmt.esc(text)}</span>`;
 
 		const links = (item.links || [])
 			.map((link) => `<a href="${fmt.esc(link.href)}">${fmt.esc(link.label)}</a>`)
@@ -254,16 +287,50 @@ function panel_rows(node) {
 	return rows.join("");
 }
 
-/** `{type: "table", columns: [{label, key, numeric}], rows: [{...}], drill}` */
+/** `right` and `center` are opt-in; a column says nothing and gets the default. */
+const ALIGN = { right: "dd-num", center: "dd-mid" };
+
+function align_class(col) {
+	return ALIGN[col.align] || (col.numeric ? "dd-num" : "");
+}
+
+/**
+ * `{type: "table", columns: [{label, key, numeric, align}], rows: [{...}], drill}`
+ *
+ * A cell is `row[col.key]`, and it is either a plain value or
+ * `{value, tone, pill}`:
+ *
+ *   `tone`  a name from `tone.js` — the ink shifts to say the value itself is
+ *           the finding (out of range, disagreeing with another system)
+ *   `pill`  render it as a pill instead of tinted text, for a cell holding a
+ *           STATE rather than a reading — `Suspended`, `Learned`
+ *
+ * Both are optional and a bare value behaves exactly as it always has.
+ *
+ * This exists because the alternative was worse. Every cell here goes through
+ * `fmt.esc`, so a table that needed one coloured cell had no way to say so and
+ * had to be rebuilt as `{type: "html"}` — the escape hatch that is "NOT escaped,
+ * by definition". Colour was making callers hand-roll their own escaping, and
+ * three tables on one page did exactly that, one of them printing values scraped
+ * off a supplier's portal. A tone is not worth an XSS.
+ */
 function panel_table(node) {
 	const head = node.columns
-		.map((col) => `<th class="${col.numeric ? "dd-num" : ""}">${fmt.esc(col.label)}</th>`)
+		.map((col) => `<th class="${align_class(col)}">${fmt.esc(col.label)}</th>`)
 		.join("");
 
 	const body = node.rows
 		.map((row) => {
 			const cells = node.columns
-				.map((col) => `<td class="${col.numeric ? "dd-num" : ""}">${fmt.esc(row[col.key])}</td>`)
+				.map((col) => {
+					const raw = row[col.key];
+					const cell = raw && typeof raw === "object" ? raw : { value: raw };
+					const painted = tone_of(cell.tone);
+					if (cell.pill) {
+						return `<td class="${align_class(col)}"><span class="dd-pill ${painted.pill}">${fmt.esc(cell.value)}</span></td>`;
+					}
+					return `<td class="${align_class(col)} ${cell.tone ? painted.cell : ""}">${fmt.esc(cell.value)}</td>`;
+				})
 				.join("");
 			return `<tr ${this.drill(row.drill, { item: row })}>${cells}</tr>`;
 		})
@@ -330,6 +397,7 @@ function panel_html(node) {
 
 const PANELS = {
 	kpis: panel_kpis,
+	fields: panel_fields,
 	card: panel_card,
 	bars: panel_bars,
 	rows: panel_rows,

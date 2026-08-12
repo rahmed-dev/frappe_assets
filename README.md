@@ -1,15 +1,20 @@
 # frappe_assets
 
-Shared assets for Frappe / ERPNext apps.
+The Desk **dashboard toolkit** for Frappe / ERPNext apps: a self-contained design
+system plus a spec-driven renderer, so a dashboard is a data structure rather
+than several hundred lines of hand-written markup. Installed as an npm package.
 
-- **`dashboard/`** — a Desk dashboard toolkit: a self-contained design system
-  plus a spec-driven renderer, so a dashboard is a data structure rather than
-  several hundred lines of hand-written markup. Installed as an npm package.
-- **`server_scripts/`** — Server Script bodies, copy-pasted into a site.
-- **`console_scripts/`** — `bench console` snippets.
-- **`docs/`** — framework notes.
+- **`dashboard/`** — the package.
+- **`demo/`** — the gallery: every panel and chart type on one page, no bench
+  needed. `yarn demo`, then open `demo/index.html`.
 
-## Install the dashboard toolkit
+The Server Script bodies, console snippets and framework notes that used to live
+here have moved to **[rahmed-dev/dev_kb](https://github.com/rahmed-dev/dev_kb)**,
+under `frappe/`. They were text to paste, not a package, and yarn clones an
+entire git dependency — so every app installing this toolkit was also getting
+them in `node_modules`.
+
+## Install
 
 ```bash
 cd apps/<your_app>

@@ -11,6 +11,34 @@
 export const esc = (value) => frappe.utils.escape_html(value == null ? "" : String(value));
 
 /**
+ * A value that may be no value at all, read as an em dash.
+ *
+ * `""`, `null` and `undefined` are the obvious cases. The strings `"null"` and
+ * `"undefined"` are here because they are what an upstream system prints once
+ * its own formatting has already failed, and passing them through puts that
+ * failure on the page dressed as data.
+ *
+ * `extra` is any further strings that mean "no reading" in one particular
+ * source — a portal that answers `[N/A]`, an API that says `N/R`. Those belong
+ * to their source and not to every dashboard, so a caller passes them in; a
+ * shared list would eventually blank a value that legitimately reads that way
+ * somewhere else.
+ *
+ * A dash, never a zero. "0 Mbps" is a measurement, an unanswered field is not,
+ * and nothing downstream can tell them apart once they look alike.
+ */
+export function blank(value, extra) {
+	if (value == null || value === "") {
+		return "—";
+	}
+	const text = String(value);
+	if (text === "null" || text === "undefined" || (extra || []).includes(text)) {
+		return "—";
+	}
+	return text;
+}
+
+/**
  * A count, grouped for readability.
  *
  * Deliberately NOT `frappe.format(v, {fieldtype: "Int"})`. That returns *HTML* —

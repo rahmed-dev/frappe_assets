@@ -87,17 +87,38 @@ a small per-row stagger so a funnel draws top-down.
 ```js
 { type: "rows", items: [
     { name, count, rate, why, links: [{label, href}], series: [], labels: [],
-      tone: "quiet"|"rising"|"easing"|"steady", status, drill } ] }
+      tone: <trend or tone name>, status, drill } ] }
 ```
+`tone` takes a direction — `quiet`, `rising`, `easing`, `steady` — or any tone
+name from `tone.js`. A panel listing failures thinks in directions, one listing
+states does not, and neither should have to translate.
 Omit `tone` and pass `series`, and the trend decides it — second half against
 first half, not the last two points, because one quiet day is noise. A `series`
 with anything in it draws a sparkline; a flat one draws nothing rather than a
 straight line implying a measurement that was taken and was zero.
 
+**`fields`** — a label/value grid: what a record says about itself.
+```js
+{ type: "fields", columns: 4, items: [{ label, value, tone }] }
+```
+Not `kpis`. That panel sets its value large and heavy because a KPI is a figure
+the reader is meant to land on; a serial number at that size claims to be the
+headline of the page. `tone` tints a value that is itself a finding.
+
 **`table`**
 ```js
-{ type: "table", columns: [{ label, key, numeric }], rows: [{ …, drill }] }
+{ type: "table",
+  columns: [{ label, key, numeric, align: "right"|"center" }],
+  rows: [{ …, drill }] }
 ```
+A cell is either a plain value or `{ value, tone, pill }`. `tone` shifts the ink,
+for a cell whose value **is** the finding — a reading out of range, a field two
+systems disagree about. `pill: true` renders it as a pill instead, for a cell
+holding a *state* rather than a measurement.
+
+Both are optional and a bare value behaves as it always has. Reach for them
+rather than rebuilding the table as `{type: "html"}`: every cell here goes
+through `fmt.esc`, and colour is not worth hand-rolling your own escaping for.
 
 **`chart`** — an ECharts option, passed through untouched.
 ```js
@@ -168,8 +189,8 @@ really does open exactly the counted records.
 
 ## `fmt`
 
-`esc` · `count` · `percent` · `date` · `duration(hours)` · `delta(value, good, unit)`
-· `trend(series)`
+`esc` · `blank(value, extra)` · `count` · `percent` · `date` · `duration(hours)`
+· `delta(value, good, unit)` · `trend(series)`
 
 `count` is `Number(v).toLocaleString()` and **not** `frappe.format(v, {fieldtype:
 "Int"})` — that returns HTML, which prints as literal markup wherever a string
@@ -177,6 +198,41 @@ was expected.
 
 `percent(null)` is `"—"`, never `"0%"`: a rate with no population is a claim the
 data does not support.
+
+`blank` reads `""`, `null`, `undefined` and the strings `"null"` / `"undefined"`
+as an em dash — the last two because they are what an upstream system prints
+once its own formatting has failed. Pass `extra` for the strings one particular
+source uses for "no reading" (`["[N/A]", "[ERR]"]`); those belong to that source
+and not to every dashboard.
+
+## Tones
+
+`success` · `warning` · `danger` · `info` · `quiet` — the one status vocabulary,
+in `tone.js`. A cell, a KPI dot, a `rows` stripe, a pill and a chart series all
+read from it, which is what makes them agree.
+
+A tone is a **fact about the value** — this reading is bad, these two records
+disagree — never decoration. `quiet` is the absence of a verdict and carries no
+colour at all: a value nobody graded must not read as "fine".
+
+On a canvas, `colour(palette, tone)` gives the literal value — the sanctioned
+exception to the monochrome series ramp, for a bar whose colour *is* its grade.
+Unknown names fall back to `quiet` rather than throwing, because a tone usually
+arrives from a backend and a state nobody has a rule for yet is ordinary.
+
+## Chart helpers
+
+Beside `chart()`, for the cartesian charts that carry a rule:
+
+- `markers(list, colours)` — dashed reference lines from `[{value, tone, label}]`,
+  or `undefined` for an empty list, so it can be passed unconditionally. ECharts
+  draws a `markLine` **per series**: put it on one of them, or identical dashes
+  stack invisibly until they disagree.
+- `bounds(values, {include, pad, step})` — axis min/max that leave every reading
+  somewhere to be drawn. `include` pulls the marker heights into view, because a
+  threshold off the top of the chart is a rule the reader is judged by and cannot
+  see. `pad` accepts `[below, above]`: bars want `[0, 0.1]` so the baseline stays
+  at zero, a trend wants the default.
 
 ## Styling
 
