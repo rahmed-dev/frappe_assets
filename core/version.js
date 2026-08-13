@@ -10,4 +10,4 @@
  * whole package, and a consumer asking which build is live is not asking about
  * one module of it.
  */
-export const VERSION = "0.5.0";
+export const VERSION = "0.5.1";

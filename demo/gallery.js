@@ -713,7 +713,17 @@ requestAnimationFrame(() => {
 	body.querySelectorAll("[data-dd-mount]").forEach((el) => {
 		const entry = pass.mounts[Number(el.getAttribute("data-dd-mount"))];
 		const panel = entry && panels.find(entry.panel);
-		panel?.mount?.(el, entry.data, context);
+		// The `try` is the half of `run_mounts` this loop used to leave out, and
+		// leaving it out is what turned one broken engine lookup into a gallery
+		// with nineteen empty cards: the throw escaped the callback and every
+		// panel queued behind it went unmounted. The gallery is where a defect is
+		// meant to be visible, so it has to fail the way a real page fails — one
+		// gap, loudly, not a silent blank sheet.
+		try {
+			panel?.mount?.(el, entry.data, context);
+		} catch (error) {
+			console.error(`[gallery] ${entry?.panel} failed to mount`, error);
+		}
 	});
 });
 

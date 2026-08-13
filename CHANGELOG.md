@@ -8,6 +8,45 @@ Every release carries a **Consumer action** line. `None` means: bump the tag,
 
 ---
 
+## v0.5.1 — 2026-08-13
+
+**Every chart was broken in v0.5.0.** `engine()` returned the chart-engine
+registry's `{name, value}` listing entry rather than the adapter it names, so
+`engine().chart` and `engine().sparkline` were `undefined` and the first chart
+panel threw the moment the mount phase reached it. On a real page the controller
+isolates each mount, so the damage was every chart and every row sparkline
+drawing nothing; in the gallery, whose own mount loop had no `try`, the first
+throw took the other eighteen panels with it.
+
+It was invisible to the suite for three separate reasons, each reasonable alone:
+the render suite asserts markup and a chart's markup is an empty `div`; the
+gallery suite stubs out the animation frame the mount phase waits for, because
+no DOM shim provides a 2d context; and on the page a chart that never mounts
+leaves a card that looks merely empty rather than failed. It was found by doing
+the thing the checklist has asked for since v0.3.0 and nobody had done —
+opening the gallery and looking at it.
+
+- **Fix:** `engine()` returns `all[0].value`. `use_engine(name)` always did,
+  which is the disagreement the new `test/unit/engine.test.js` pins down: both
+  paths read the same registry and must hand back the same object.
+- **Fix:** the chart layer honours `prefers-reduced-motion`. It was the third
+  moving thing on the page and the only one that never stopped — §13e of
+  `dash.scss` covers the bars and the panel entrance, but a canvas is not
+  reachable from CSS, so the engine has to be told.
+- **Fix:** the gallery's mount loop wraps each panel in a `try`, as
+  `controller.js#run_mounts` already did. The gallery is where a defect is meant
+  to be visible, so it has to fail the way a real page fails — one gap, loudly,
+  not a blank sheet.
+- The gallery has now been read end to end in **both** themes, which closes the
+  item left open in v0.3.0, v0.4.0 and v0.5.0. Every chart type draws, the mono
+  ramp separates in both, and the tones on cells, pills and stripes hold.
+
+**Consumer action: none.** Bump the tag, `yarn install`, `bench build --app
+<app>`, `bench --site <site> clear-cache`. Any page on v0.5.0 that draws a chart
+wants this.
+
+---
+
 ## v0.5.0 — 2026-08-13
 
 **Data and state.** A dashboard stops being "two date fields and a callback".

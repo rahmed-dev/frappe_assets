@@ -278,6 +278,14 @@ second panel is invisible. Pass `--force-prefers-reduced-motion` when capturing.
 That is a screenshot artefact, not a bug, and it has already been mistaken for
 one once.
 
+**Serve the gallery over HTTP when capturing it — never `file://`.** The bundle
+is a module, so a throw inside it reaches `window.onerror` as the opaque
+`"Script error."` with no file and no line. Over `http://localhost:…` the same
+throw arrives in full. That difference is the whole distance between "the charts
+look empty" and `engine(...).sparkline is not a function`, which is how the
+v0.5.0 chart bug stayed invisible: `python3 -m http.server`, then point Chrome at
+localhost.
+
 ---
 
 ## Working here

@@ -71,7 +71,13 @@ export function engine() {
 	}
 	const all = engines.all();
 	if (all.length === 1) {
-		selected = all[0];
+		// `.value`, not the entry: `Registry#all` returns `{name, value}` pairs for
+		// tooling that wants to list what is registered. Returning the pair here is
+		// what broke every chart in v0.5.0 — `engine().chart` was `undefined`, the
+		// first mount threw, and the mount loop stopped, so no panel after it drew
+		// either. Nothing failed loudly, because a chart that never mounts leaves a
+		// card that looks merely empty.
+		selected = all[0].value;
 		return selected;
 	}
 	throw new NoChartEngineError(engines.names());

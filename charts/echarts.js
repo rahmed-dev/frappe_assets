@@ -101,6 +101,20 @@ const live = new Set();
  * `series` still gets a chart that matches the page, and the ones who care can
  * override any of it.
  */
+/**
+ * Whether this browser is asking for less motion.
+ *
+ * Deferred to call time and defensive about `matchMedia`, because this package
+ * is imported in environments with no DOM at all — a module-scope query here is
+ * the exact mistake the `MutationObserver` in `charts.js` made before v0.3.0.
+ */
+function reduced_motion() {
+	return (
+		typeof matchMedia === "function" &&
+		matchMedia("(prefers-reduced-motion: reduce)").matches
+	);
+}
+
 function base_option(colours, over) {
 	// Whether the caller named an axis is what decides if this is a chart drawn on
 	// a grid. It has to be decided, not assumed: ECharts draws an `xAxis`/`yAxis`
@@ -111,6 +125,13 @@ function base_option(colours, over) {
 	const cartesian = Boolean(over && (over.xAxis || over.yAxis));
 
 	const common = {
+		// The third moving thing on the page, and until now the only one that did
+		// not stop for `prefers-reduced-motion` — §13e of `dash.scss` switches the
+		// bars and the panel entrance off together, but a canvas is not reachable
+		// from CSS, so the engine has to be told. Read at build time, never at
+		// module scope: `base_option` re-runs on every theme change and on every
+		// redraw, so a user who changes the setting gets the new answer for free.
+		animation: !reduced_motion(),
 		animationDuration: 300,
 		textStyle: { color: colours.muted, fontSize: 11 },
 		tooltip: {

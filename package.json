@@ -1,6 +1,6 @@
 {
 	"name": "frappe-assets",
-	"version": "0.5.0",
+	"version": "0.5.1",
 	"description": "Desk frontend framework for Frappe apps — a design system, a spec renderer and a dashboard module",
 	"license": "MIT",
 	"repository": {

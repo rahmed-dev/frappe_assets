@@ -115,10 +115,31 @@ rather than two hard-coded date fields.
       event payloads
 - [x] `MIGRATING-0.4-to-0.5.md`
 
-**Left open:** as with 0.3.0 and 0.4.0 — the gallery has not been looked at by a
-human in both themes. The three new `dd-state-*` surfaces are the first thing to
-look at, since a placeholder is exactly the kind of low-contrast panel a dark
-block gets wrong.
+**Left open:** nothing — closed by v0.5.1 below, which is also what the look
+found.
+
+---
+
+## v0.5.1 — the look, and what it found ✅ shipped
+
+The item left open since v0.3.0 is done: the gallery has been read end to end in
+both themes. It was not cosmetic. Every chart in v0.5.0 was dead.
+
+- [x] `engine()` returned the registry's `{name, value}` listing entry, not the
+      adapter — so `engine().chart` was `undefined` and no chart or sparkline
+      mounted anywhere
+- [x] `test/unit/engine.test.js` pins both lookup paths to the same object
+- [x] The chart layer honours `prefers-reduced-motion`; it was the third moving
+      thing on the page and the only one that never stopped
+- [x] The gallery's mount loop isolates each panel, as the controller already did
+- [x] Read in both themes: every chart type, the mono ramp, the tones on cells,
+      pills and stripes, the three `dd-state-*` surfaces
+
+**What it says about the suite:** three reasonable decisions hid this. The render
+suite asserts markup and a chart's markup is an empty `div`; the gallery suite
+stubs the animation frame the mount phase waits for; and on the page a chart that
+never mounts looks merely empty. No assertion was wrong. Looking is what was
+missing, and it stays on the standing list below for that reason.
 
 ---
 
