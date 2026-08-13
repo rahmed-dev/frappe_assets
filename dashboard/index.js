@@ -1,24 +1,18 @@
 /**
- * Desk dashboard toolkit — public surface.
+ * The dashboard module — the spec renderer, the controller and the chart adapter.
  *
- * A consuming app re-exports this from one `*.bundle.js` of its own, because
- * Frappe's esbuild only picks up bundles that live inside an app's `public/`
- * (see the repo CLAUDE.md). That bundle is the only integration code an app
- * needs to write.
- *
- * The stylesheet is a separate import — `@use "~frappe-assets/dashboard/dash.scss"`
- * from an app's SCSS bundle — because CSS and JS take different paths through
- * the build and a page can legitimately want the design system without the
- * renderer.
+ * One module of several since v0.3.0. The kernel it is built on (`core/`), the
+ * design system it paints with (`ui/`) and the data layer it fetches through
+ * live beside it and are usable without it; the root `index.js` is the barrel
+ * that gathers all of them, and it is what a consuming app's bundle re-exports.
  *
  * What this file exports is the contract — see CONTRACT.md. A module reached by
  * path instead is internal and may be renamed in a patch release.
  */
 
-export { VERSION } from "./version.js";
+export { VERSION } from "../core/version.js";
 export { Dashboard } from "./controller.js";
-export { render } from "./render.js";
-export { chart, sparkline, palette, token, colour, markers, bounds } from "./charts.js";
+export { render, render_to_string, panels } from "./render.js";
+export { palette, token, colour, markers, bounds } from "../charts/helpers.js";
+export { engine, engines, has_engine, use_engine } from "../charts/adapter.js";
 export { follow as drill } from "./drill.js";
-export { tone, TONES } from "./tone.js";
-export * as fmt from "./format.js";

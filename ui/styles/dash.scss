@@ -85,7 +85,7 @@
 	   something about them that is not true. The status colours stay reserved for
 	   the series that genuinely mean good or bad, and a chart that assigns them
 	   by position spends them on nothing.
-	   Read by `charts.js#palette`, which is a canvas and cannot resolve a
+	   Read by `charts/helpers.js#palette`, which is a canvas and cannot resolve a
 	   `var()` — so renaming one of these without updating that file degrades to
 	   a fallback silently. — */
 	--dd-series-1: #18181b;
@@ -1145,6 +1145,58 @@ body:not(.full-width) .dd-host .container {
 	border-radius: var(--dd-radius-md);
 	padding: var(--dd-space-3) var(--dd-space-4);
 	font-size: var(--dd-text-sm);
+}
+
+/* Per-panel states (§13d, since v0.5.0). `.dd-error` above is the whole page
+   failing; these three are one panel out of six failing, which is the ordinary
+   case once a dashboard has a resource per panel.
+
+   `empty` and `error` are deliberately NOT the same. Both are an absence of
+   numbers, and a surface that paints them identically teaches its readers to
+   read a failed query as a quiet month — the misreading nobody reports, because
+   the page looks fine. So empty is quiet and unbordered, error carries the
+   danger border every other failure on this surface carries. */
+.dd-page .dd-state {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: var(--dd-space-2);
+	min-height: var(--dd-state-height, 96px);
+	border-radius: var(--dd-radius-md);
+	padding: var(--dd-space-4);
+}
+.dd-page .dd-state-label {
+	font-size: var(--dd-text-sm);
+	font-weight: 600;
+	color: var(--dd-ink);
+}
+.dd-page .dd-state-text {
+	font-size: var(--dd-text-sm);
+	color: var(--dd-ink-muted);
+}
+.dd-page .dd-state-loading {
+	padding: 0;
+	gap: var(--dd-space-2);
+}
+/* The two bars share the space rather than each taking the skeleton's own 72px,
+   so a `loading` panel is the height of the panel it stands in for instead of
+   twice it. */
+.dd-page .dd-state-loading .dd-skeleton {
+	flex: 1 1 auto;
+	height: auto;
+	min-height: 32px;
+}
+.dd-page .dd-state-empty {
+	border: 1px dashed var(--dd-border);
+	background: var(--dd-surface-alt);
+}
+.dd-page .dd-state-error {
+	border: 1px solid var(--dd-danger);
+	background: var(--dd-danger-bg);
+}
+.dd-page .dd-state-error .dd-state-text,
+.dd-page .dd-state-error .dd-state-label {
+	color: var(--dd-danger-fg);
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

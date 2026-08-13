@@ -1,34 +1,48 @@
 # frappe_assets
 
-The Desk dashboard toolkit for Frappe/ERPNext apps. One thing, two directories.
+The Desk frontend framework for Frappe/ERPNext apps: a kernel, a design system,
+and a dashboard module built on both.
 
-**Before changing anything under `dashboard/`, read [`CONTRACT.md`](CONTRACT.md)**
+**Before changing anything outside `demo/`, read [`CONTRACT.md`](CONTRACT.md)**
 — it says which exports, spec keys, `dd-` class names and `--dd-*` tokens a
 consuming page is allowed to depend on, and therefore which of them cannot be
 renamed without a version bump and a migration note. Two of those three channels
 have no build-time check: a renamed CSS class fails **silently**, and the page is
-simply wrong until someone opens it. [`CONTRIBUTING.md`](CONTRIBUTING.md) is the
-process — how to add a panel, when a fix is not a patch, how to cut a release.
+simply wrong until someone opens it. Since v0.3.0 `test/contract` reads that file
+and fails when a promised name goes missing — but only for the names actually
+listed in its tables, so keep them current.
+[`CONTRIBUTING.md`](CONTRIBUTING.md) is the process — how to add a panel, when a
+fix is not a patch, how to cut a release.
 
 | Directory | What it is | Consumed how |
 |---|---|---|
-| `dashboard/` | The toolkit — a design system plus a spec renderer | `yarn add` this repo, then import |
+| `core/` | The kernel: host adapter, registries, render walk, events, escaping, DOM, errors | via the barrel |
+| `data/` | `State` (range + declared filters + the URL) and `Resource` (fetch, guard, abort, cache, poll) | via the barrel |
+| `ui/` | The design system: the stylesheet, the tone vocabulary, the formatters | via the barrel and one SCSS import |
+| `charts/` | Token helpers, the engine interface, the ECharts adapter | helpers via the barrel; the engine via its own entry |
+| `dashboard/` | The spec renderer, the page controller, one file per panel | via the barrel |
+| `desk/` | `dd.page()` — Desk page scaffolding, usable without a dashboard | via the barrel |
 | `demo/` | The gallery: every panel and chart type on one page, no bench needed | `yarn demo`, open `demo/index.html` |
+| `test/` | Unit, render and contract suites | `yarn test` |
 
 **This repo is a front-end package and nothing else.** Server Script bodies,
 console snippets and framework notes moved to `rahmed-dev/dev_kb` under
-`frappe/`. Do not add them back: yarn clones an **entire** git dependency —
-`files: ["dashboard"]` does not apply — so anything here lands in the
-`node_modules` of every app that wants the toolkit.
+`frappe/`. Do not add them back: yarn clones an **entire** git dependency — the
+`files` field does not apply — so anything here lands in the `node_modules` of
+every app that wants the toolkit.
 
 **This repo is public.** It is installed over plain HTTPS with no credentials,
 which is what lets a fresh bench run `yarn install` for a consuming app. Nothing
 site-specific, no keys and no customer data may land here. The last thing removed
 from this repo was a diagnostic carrying a real employee's name and id.
 
-**Changing anything under `dashboard/` means re-running `yarn demo` and looking
-at the gallery.** It is the only place the chart types nobody has used yet are
-visible at all, and the bugs it has caught were invisible on the one dashboard
+**Changing anything outside `demo/` means running `yarn test`, re-running
+`yarn demo`, and looking at the gallery.** The suite is fast and it is not a
+substitute for the second half: it proves the markup and the escaping, and it
+cannot see a colour.
+
+The gallery is the only place the chart types nobody has used yet are visible at
+all, and the bugs it has caught were invisible on the one dashboard
 that exists — most recently a toned table cell that rendered in body ink because
 `tbody td` outspecified it, which looked exactly like the tone never being
 passed. Both themes, every time.
@@ -46,12 +60,17 @@ Then two thin bundle files in the app — that is the whole integration:
 
 ```js
 // <app>/public/js/dash.bundle.js
-export * from "frappe-assets/dashboard";
+export * from "frappe-assets";
+
+// Only if a spec declares a `chart` panel. Importing this IS the interface — it
+// registers the engine. Measured: the barrel alone is 30 KB minified, the barrel
+// plus this is 727 KB. Before v0.4.0 every consuming app paid the second number.
+import "frappe-assets/charts/echarts";
 ```
 
 ```scss
 // <app>/public/scss/dash.bundle.scss
-@use "~frappe-assets/dashboard/dash.scss";
+@use "~frappe-assets/ui/styles/dash.scss";
 ```
 
 ### Why those two files have to exist
@@ -71,14 +90,22 @@ resolves from any app without a relative path. Do not use a relative
 hoisted to the bench root.
 
 `echarts` is a **peer** dependency, not a direct one: the consuming app installs
-it so there is exactly one copy in that app's bundle. It is optional — the
-toolkit only touches it when a spec actually declares a `chart` panel.
+it so there is exactly one copy in that app's bundle. It is optional, and since
+v0.4.0 that is enforced by the module graph rather than promised — nothing the
+barrel reaches imports it. An app with no charts installs no `echarts` and adds
+no import line.
+
+The obvious alternative, keeping one entry point and lazily `import()`-ing the
+engine on first use, buys nothing here and was tried on paper first: Frappe's
+esbuild emits one file per `*.bundle.js` with code splitting off, and esbuild
+inlines a dynamic import into the same output when it cannot split. The bytes
+stay and every call site becomes async for no saving.
 
 ---
 
 ## The one rule that matters: own the palette
 
-`dashboard/dash.scss` declares its **own literal hex tokens** on the anchor
+`ui/styles/dash.scss` declares its **own literal hex tokens** on the anchor
 class `.dd-page`, and re-declares every themed one under
 `[data-theme="dark"] .dd-page`. It does **not** build on Frappe's semantic
 tokens. This is not stylistic preference — three of Frappe's tokens are traps:
@@ -115,7 +142,7 @@ resolves "automatic" to a concrete value *before* stamping that attribute, so
 
 ---
 
-## One tone vocabulary — `dashboard/tone.js`
+## One tone vocabulary — `ui/tone.js`
 
 `success · warning · danger · info · quiet`, and every surface reads from it: a
 table cell, a KPI dot, a `rows` stripe, a pill, a chart series through
@@ -255,17 +282,51 @@ one once.
 
 ## Working here
 
-- The renderer is **pure**: `render(container, spec)` builds markup from data
-  and never fetches. Fetching, ranges and state live in `controller.js`. Keep
-  that split — it is what makes a panel testable.
+- The renderer is **pure**: `render_to_string(spec)` builds markup from data and
+  never fetches; `render(container, spec)` is that plus one `innerHTML`. Fetching
+  lives in `data/resource.js`, the range and the filters in `data/state.js`, and
+  `controller.js` is what wires the three to a Desk page. Keep that split — it is
+  what makes a panel testable.
+- **A state change is one patch, not one event per key.** A preset moves two
+  dates. Before v0.5.0 the controller carried a `suspended` flag precisely
+  because setting the pair fired two changes, fetched twice, and rendered the
+  first answer against the second window. `State#set` takes the whole patch and
+  emits once; do not add a per-key setter that emits.
+- **Only declared filter keys are read off a URL.** The object built from the
+  query string goes straight to a whitelisted method as its arguments. Accepting
+  undeclared keys would let a link decide what that method receives — a different
+  and much worse bug than a filter that fails to apply.
+- **`frappe`, `__` and `$` appear in exactly one file: `core/host.js`.** Reach
+  for `host()` instead, everywhere. That file is also the complete inventory of
+  what this package needs from Desk, which is what makes auditing a Frappe
+  upgrade a five-minute job.
+- **`esc` is deliberately not on the host interface.** A safety property that
+  can be swapped out is not one. `core/escape.js` has no dependencies and never
+  will.
 - Handlers are **delegated** from the page body, because every refresh replaces
-  the markup. The only two on `document` are outside-click and Escape, and they
-  are namespaced and cleared first so re-entering a page cannot stack a copy.
+  the markup. Every binder returns its own unbinder. The only two on `document`
+  are outside-click and Escape, and the previous pair is released first so
+  re-entering a page cannot stack a copy.
 - Anything drillable gets keyboard activation, not just a click handler.
 - No CDN loads. A Desk page must work on a LAN-only deployment.
-- **The package is `"sideEffects"`-annotated.** The toolkit is pure and may be
-  tree-shaken, but `demo/**` is listed because `gallery.js` imports
-  `frappe-stub.js` as a bare side-effect import. Under a blanket `false`,
-  esbuild deletes that import and the gallery dies on its first `__()`.
-- Run `yarn demo` and look at the page before calling a `dashboard/` change
-  done. Both themes — half the defects here only exist in one of them.
+- **The package is genuinely side-effect-free, and must stay that way.** Nothing
+  may touch `document`, `window` or `frappe` at module scope — that is what a
+  module-scope `MutationObserver` in `charts.js` did until v0.3.0, and it meant
+  importing anything at all required a DOM. Defer it to first use.
+- **A module whose import IS its interface must be listed in `sideEffects`.**
+  Three are: `demo/**` (`gallery.js` pulls `frappe-stub.js` in as a bare import),
+  `charts/echarts.js` (importing it registers the engine) and
+  `dashboard/panels/index.js` (importing it registers the twelve panels). Under a
+  blanket `false` a bundler is entitled to delete a bare import, and it does —
+  esbuild says so out loud, `Ignoring this import because "…" was marked as
+  having no side effects`, which in the panels case would have shipped a renderer
+  that knows no panel types at all. **Read the build warnings**; that one was one
+  line above a successful build.
+- **A panel is a registry entry, not a branch in the renderer.** `render(node,
+  pass)` is pure and returns a string; `mount(el, data, context)` runs after
+  layout and **returns its teardown**. The controller runs that teardown before
+  the next draw, while the element is still attached — an observer released after
+  its element is detached has already kept the element, its canvas and everything
+  the option closed over alive for the rest of the Desk session.
+- Run `yarn test`, then `yarn demo`, then look at the page, before calling a
+  change done. Both themes — half the defects here only exist in one of them.

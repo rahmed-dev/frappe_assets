@@ -2,4 +2,4 @@
    Page furniture — the top bar, the frame the cards sit on — is inline in
    index.html, deliberately kept out of here so that this file compiling is
    evidence about `dash.scss` alone. */
-@use "../dashboard/dash.scss";
+@use "../ui/styles/dash.scss";

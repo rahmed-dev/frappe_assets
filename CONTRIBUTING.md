@@ -14,21 +14,44 @@ process.
 ### The shape
 
 ```
+index.js          the public surface — the barrel an app imports
+core/
+  host.js         the ONE seam where Desk exists: DeskHost | TestHost
+  registry.js     Registry — how a consumer extends the vocabulary
+  spec.js         the render kernel: Pass, the panels registry, the mount queue
+  events.js       Emitter — the lifecycle hooks
+  escape.js       esc / slug / attr. No dependencies, by design
+  dom.js          unwrap / delegate / listen / fill. The jQuery replacement
+  errors.js       DdError and friends, each carrying a stable `code`
+  version.js      the release this build came from
+data/
+  state.js        State — the date window, the declared filters, the URL
+  resource.js     Resource — fetch, sequence guard, abort, cache, poll, realtime
+ui/
+  tone.js         the one status vocabulary, as a registry
+  format.js       value -> display string
+  layout.js       columns_of — a fact about what the stylesheet paints
+  styles/dash.scss  the design system: own tokens, own dark block
+charts/
+  helpers.js      palette / token / colour / markers / bounds. NO engine import
+  adapter.js      what a charting engine must provide, and its registry
+  echarts.js      the ECharts adapter. Its own entry point; registers on import
 dashboard/
-  index.js        the public surface — the only entry an app imports
-  controller.js   STATE: page chrome, date range, fetch, refresh, chart mount
-  render.js       PURE: spec (plain data) -> HTML string. Never fetches.
-  charts.js       the ECharts adapter: base_option, palette, markers, bounds
-  tone.js         the one status vocabulary
-  format.js       value -> display string, including esc()
+  index.js        the dashboard module's own entry
+  controller.js   STATE: page chrome, date range, fetch, refresh, mount phase
+  render.js       PURE: header, caveat, footer, and the two entry points
+  panels/         one file per panel type, registered by panels/index.js
   drill.js        a spec's drill descriptor -> a Desk route
-  dash.scss       the design system: own tokens, own dark block
+desk/
+  page.js         dd.page() — Desk page scaffolding in one call
 demo/             the gallery — every panel and chart on one page, no bench
+test/             unit, render, DOM and contract suites
 ```
 
-Imports only ever point downward: `controller -> render -> {tone, format, drill,
-charts}`. Nothing imports back up, and nothing imports sideways between the four
-leaves except through `tone.js`.
+Imports only ever point downward: `desk -> dashboard -> charts -> ui -> data ->
+core`. Nothing in
+`core/` imports from anywhere above it, `charts/helpers.js` imports no charting
+engine, and nothing anywhere imports `frappe`, `__` or `$` except `core/host.js`.
 
 ### The three ideas everything follows from
 
@@ -37,10 +60,17 @@ and `render` turns it into markup. A page never writes HTML. This is why a panel
 can be changed for every dashboard at once, and why the output can be checked
 without a browser.
 
-**Pure and stateful are separated.** `render(container, spec)` is a total
+**Pure and stateful are separated.** `render_to_string(spec)` is a total
 function of its input: same spec, same markup, no network, no clock, no Desk
-page object. Everything that fetches, remembers or reacts lives in
-`controller.js`. Keep that line — it is what makes any of this verifiable.
+page object, no DOM. Everything that fetches, remembers or reacts lives in
+`controller.js`. Keep that line — it is what makes any of this verifiable, and
+since v0.3.0 it is what the render suite actually exercises.
+
+**The environment is injected, never reached for.** `frappe`, `__` and `$`
+appear in `core/host.js` and nowhere else. Everything that needs translation,
+routing, dates, a server call or a paint hook goes through `host()`. That is
+what lets the same code run under `TestHost` in a test, in the gallery, and
+one day in whatever renders a printed digest.
 
 **The library owns its own look.** `dash.scss` declares literal hex tokens on
 `.dd-page` and re-declares the themed ones under `[data-theme="dark"]`. It does
@@ -64,13 +94,32 @@ the dark block, or it is not done.
 
 ### Adding a panel type
 
-1. Write `panel_x(node)` in `render.js`, returning a string, escaping every
-   value it did not generate itself.
-2. Add one line to the `PANELS` registry.
-3. Style it in `dash.scss` using existing tokens where they fit.
-4. Add it to `demo/gallery.js` — this is not optional, see §3.
-5. Document it in `dashboard/README.md § Panels`.
-6. **Minor** bump.
+1. Write `dashboard/panels/<name>.js`, exporting `name` and `render(node, pass)`.
+   `render` returns a string and escapes every value it did not generate itself.
+   Never interpolate a spec value into a class attribute — `slug` it, because a
+   space there is a second class rather than a broken one.
+2. Add it to the list in `dashboard/panels/index.js`.
+3. If it needs live behaviour, export `mount(el, data, context)` too. Claim its
+   slot in `render` with `pass.defer(name, data)` and stamp the index into
+   `data-dd-mount`. **Return a teardown function** — the controller runs it
+   before the next draw, and a panel that holds an observer without one keeps its
+   element alive for the rest of the Desk session.
+4. Style it in `ui/styles/dash.scss` using existing tokens where they fit.
+5. Add it to `demo/gallery.js` — this is not optional, see §3.
+6. Add a case to `test/render/panels.test.js`, including one asserting that a
+   value carrying `<img src=x onerror=…>` does not reach the page as markup.
+7. Document it in `dashboard/README.md § Panels`.
+8. **Minor** bump.
+
+A panel that only one dashboard could ever want does not belong here. Since
+v0.4.0 a consuming app defines its own with `panels.define(name, panel)` — the
+same shape, the same mount phase — and the gallery draws one to prove it.
+
+### Adding a chart series type
+
+One entry in `echarts.use()` in `charts/echarts.js`, plus a gallery panel drawing
+it. An app that wants a series this adapter does not ship calls `use_series()`
+with its own import instead, which keeps the weight on the app that asked.
 
 ### Adding an option to an existing panel
 
@@ -80,16 +129,21 @@ byte-identically.
 
 ### Adding a tone
 
-An entry in `tone.js` **and** matching `dd-pill-*`, `dd-cell-*`, `dd-row-*` rules
-in `dash.scss`, or the map promises a colour the stylesheet never paints. Minor.
+An entry in `ui/tone.js` **and** matching `dd-pill-*`, `dd-cell-*`, `dd-row-*`
+rules in `ui/styles/dash.scss`, or the map promises a colour the stylesheet
+never paints. Minor.
 
-### Adding a chart series type
+A consuming app adds one for itself with `tones.define(name, {token, palette})`
+and ships the three rules in its own stylesheet. Adding one *here* is for a tone
+every dashboard would want.
 
-One entry in `echarts.use()` in `charts.js` — never a switch to the umbrella
-build — plus a gallery panel drawing it. Minor. Note the bundle cost in the
-commit message; the eleven registered types cost ~150 KB over the three a single
-dashboard needs, which is affordable only because this bundle is pulled with
-`frappe.require` and is not in `app_include_js`.
+### Adding a chart series type, in detail
+
+One entry in `echarts.use()` in `charts/echarts.js` — never a switch to the
+umbrella build — plus a gallery panel drawing it. Minor. Note the bundle cost in
+the commit message; the eleven registered types cost ~150 KB over the three a
+single dashboard needs. Since v0.4.0 that weight lands only on an app that
+imports `frappe-assets/charts/echarts` at all.
 
 ### Fixing a bug
 
@@ -118,6 +172,11 @@ Grep every consuming app before deleting either.
 
 ## 3. Before calling a change done
 
+- **`yarn test`.** Unit, render and contract suites. The contract suite reads
+  `CONTRACT.md` itself, so a class or token renamed without updating that file
+  fails here rather than on someone's screen. If you renamed one deliberately,
+  the fix is to edit `CONTRACT.md` **and** bump accordingly — not to loosen the
+  test.
 - `node --check` on every changed JS file.
 - **`yarn demo`, then open `demo/index.html` in both themes and look at it.**
   Mandatory after any `dashboard/` change. It is the only place the panels and
@@ -129,9 +188,9 @@ Grep every consuming app before deleting either.
   freezes CSS animations at frame 0, so everything past the second panel appears
   blank. That is a screenshot artefact and has been mistaken for a bug once.
 - If the change touches a panel that a consuming page uses, render that page's
-  spec before and after and diff it. There is no test suite yet; a small node
-  harness that stubs `frappe` and evaluates the page's `build_spec` is enough,
-  and it is how the last migration proved 217 table cells were unchanged.
+  spec before and after and diff it. `render_to_string` plus a `TestHost` is the
+  whole harness now — no browser, no stub — and it is how the last migration
+  proved 217 table cells were unchanged.
 - Nothing site-specific in the diff. **This repo is public** and installs over
   plain HTTPS with no credentials. No hostnames, customer names, employee names,
   ids or keys — the last thing removed from here was a diagnostic carrying a

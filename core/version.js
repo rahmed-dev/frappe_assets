@@ -5,5 +5,9 @@
  * It lives in its own module rather than in `index.js` because the controller
  * stamps it on the page and `index.js` imports the controller; declaring it at
  * the surface would make that a cycle.
+ *
+ * In `core/` rather than `dashboard/` since v0.3.0: it is the version of the
+ * whole package, and a consumer asking which build is live is not asking about
+ * one module of it.
  */
-export const VERSION = "0.2.0";
+export const VERSION = "0.5.0";

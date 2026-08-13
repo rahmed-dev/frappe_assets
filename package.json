@@ -1,36 +1,52 @@
 {
 	"name": "frappe-assets",
-	"version": "0.2.0",
-	"description": "Desk dashboard toolkit for Frappe apps",
+	"version": "0.5.0",
+	"description": "Desk frontend framework for Frappe apps — a design system, a spec renderer and a dashboard module",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/rahmed-dev/frappe_assets.git"
 	},
 	"type": "module",
-	"//sideEffects": "The toolkit is pure — every module earns its place by being imported for an export, so a consuming bundler may drop whatever a dashboard does not use. `demo/` is the exception and must be listed: `gallery.js` pulls in `frappe-stub.js` as a bare import for its side effects alone, and under a blanket `false` esbuild removes that import and the gallery dies on the first `__()`.",
+	"//sideEffects": "The toolkit is pure — every module earns its place by being imported for an export, so a consuming bundler may drop whatever a dashboard does not use. This became true rather than merely claimed in v0.3.0: `charts.js` used to construct a MutationObserver at module scope, which meant importing anything at all touched `document.documentElement`. It is now installed on the first chart mounted. Two exceptions must stay listed. `demo/`: `gallery.js` pulls in `frappe-stub.js` as a bare import for its side effects alone, and under a blanket `false` esbuild removes that import and the gallery dies on the first `t()`. `charts/echarts.js`: importing it IS the interface — it registers the engine — so a bundler entitled to drop a bare import would take the registration with it and every chart panel would then throw. `dashboard/panels/index.js`: same shape, and esbuild said so out loud — `Ignoring this import because \"dashboard/panels/index.js\" was marked as having no side effects`, which would have shipped a renderer that knows no panel types at all.",
 	"sideEffects": [
-		"demo/**"
+		"demo/**",
+		"charts/echarts.js",
+		"dashboard/panels/index.js"
 	],
-	"//exports": "Two entries and no wildcard, on purpose. `CONTRACT.md` promises the index exports and the stylesheet; a deep import of any other module is not supported, and listing `./dashboard/*` would turn every internal file into an accidental contract that nothing then dares rename. The SCSS is reachable by path because an app's stylesheet imports it as `~frappe-assets/dashboard/dash.scss` through sass includePaths, which does not consult this field — the entry is here so a bundler that does consult it agrees.",
+	"//exports": "Named entries and no wildcard, on purpose. `CONTRACT.md` promises the barrel, the dashboard module, the chart engine entry and the stylesheet; a deep import of any other file is not supported, and a `./*` wildcard would turn every internal module into an accidental contract that nothing then dares rename. `./charts/echarts` is its own entry because that is what keeps ~550 KB of charting engine out of an app that draws no charts. The SCSS is reachable by path because an app's stylesheet imports it as `~frappe-assets/ui/styles/dash.scss` through sass includePaths, which does not consult this field — the entry is here so a bundler that does consult it agrees.",
 	"exports": {
+		".": "./index.js",
 		"./dashboard": "./dashboard/index.js",
-		"./dashboard/dash.scss": "./dashboard/dash.scss",
+		"./charts/echarts": "./charts/echarts.js",
+		"./ui/styles/dash.scss": "./ui/styles/dash.scss",
 		"./package.json": "./package.json"
 	},
+	"//files": "Every module directory the barrel can reach, and nothing else. `demo/` and `test/` are development tools; yarn clones the whole git repo regardless of this field, so leaving them out is documentation of intent rather than a size saving — but a consumer importing from either is doing something the contract does not cover.",
 	"files": [
-		"dashboard"
+		"core",
+		"data",
+		"ui",
+		"charts",
+		"dashboard",
+		"desk",
+		"index.js"
 	],
 	"scripts": {
-		"demo": "node demo/build.mjs"
+		"demo": "node demo/build.mjs",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"check": "node --run test && node demo/build.mjs"
 	},
 	"peerDependencies": {
 		"echarts": "^5.6.0"
 	},
-	"//devDependencies": "Gallery build only. Yarn does not install a git dependency's devDependencies, so none of this reaches a consuming app. The script is named `demo` and not `prepare` for the same reason: yarn runs `prepare` for git deps, and every app installing this would start building the gallery.",
+	"//devDependencies": "Gallery build and test suite only. Yarn does not install a git dependency's devDependencies, so none of this reaches a consuming app. The script is named `demo` and not `prepare` for the same reason: yarn runs `prepare` for git deps, and every app installing this would start building the gallery.",
 	"devDependencies": {
 		"echarts": "^5.6.0",
 		"esbuild": "^0.25.0",
-		"sass": "^1.83.0"
+		"happy-dom": "^20.11.2",
+		"sass": "^1.83.0",
+		"vitest": "^4.1.10"
 	}
 }

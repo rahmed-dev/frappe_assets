@@ -1,35 +1,31 @@
 /**
- * The five Frappe globals the toolkit touches, stubbed so the gallery runs in a
- * plain browser tab with no bench behind it.
+ * Installs the `TestHost` so the gallery runs in a plain browser tab with no
+ * bench behind it.
  *
- * This file MUST be imported before anything under `dashboard/`. Some of them
- * are read at module-evaluation time, not on first call — `render.js` builds its
- * TONES table with `__()` as it loads — so a stub installed inside `main()`
- * would already be too late. ES modules evaluate imports in source order, which
- * is what makes the single `import "./frappe-stub.js"` at the top of gallery.js
- * sufficient and load-bearing.
+ * This used to stub five Frappe globals, because the toolkit reached for
+ * `frappe` and `__` directly from five files. Since v0.3.0 there is exactly one
+ * seam — `core/host.js` — and the gallery uses the same `TestHost` the test
+ * suite does. That matters more than the line count: a stub that only the
+ * gallery uses drifts from the stub only the tests use, and the bug that finds
+ * you is always "it works in one and not the other".
  *
- * Deliberately thin. The point of the gallery is to exercise the real renderer
- * and the real chart layer; anything reimplemented here is something the gallery
- * is no longer proving. `set_route` logs instead of navigating because there is
- * no Desk to navigate to — a drill target is still worth showing as reachable.
+ * Still imported for its side effect alone, and still before anything else, so
+ * `demo/**` stays listed in `package.json` `sideEffects` — under a blanket
+ * `false`, esbuild deletes this import and the page dies on its first `t()`.
+ *
+ * `route` is recorded rather than followed, because there is no Desk to
+ * navigate to. The gallery prints what a drill *would* have opened, which is
+ * still worth showing: a drill target nobody can see is a drill target nobody
+ * checks.
  */
 
-const escape_html = (value) =>
-	String(value == null ? "" : value).replace(
-		/[&<>"']/g,
-		(char) =>
-			({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char],
-	);
+import { setHost, TestHost } from "../index.js";
 
-globalThis.__ = (text, args) =>
-	(args || []).reduce((out, arg, i) => out.split(`{${i}}`).join(arg), text);
+class GalleryHost extends TestHost {
+	route(...args) {
+		super.route(...args);
+		console.log("drill →", ...args); // eslint-disable-line no-console
+	}
+}
 
-globalThis.frappe = {
-	utils: { escape_html },
-	// The real one returns HTML for a fieldtype. Numbers are all the gallery
-	// passes, and grouping them is the whole of what the real one would do here.
-	format: (value) => escape_html(Number(value).toLocaleString()),
-	datetime: { str_to_user: (value) => value },
-	set_route: (...args) => console.log("drill →", ...args), // eslint-disable-line no-console
-};
+setHost(new GalleryHost());
