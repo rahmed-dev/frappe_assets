@@ -33,7 +33,7 @@ there too. Three things are only checkable from this page:
 |---|---|
 | `index.html` | page shell, theme button, and the only CSS the gallery owns |
 | `gallery.js` | sample data, one option per chart type, the spec, the mount loop |
-| `gallery.scss` | one `@use` of `dashboard/dash.scss` — nothing else |
+| `gallery.scss` | one `@use` of `ui/styles/dash.scss` — nothing else |
 | `frappe-stub.js` | the five Frappe globals the toolkit reads |
 | `build.mjs` | esbuild + sass; writes the two gitignored bundles |
 

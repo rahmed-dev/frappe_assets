@@ -7,8 +7,19 @@
  * two dashboards in the same app end up disagreeing about what "—" means.
  */
 
-/** Anything user- or data-supplied that reaches an HTML string goes through this. */
-export const esc = (value) => frappe.utils.escape_html(value == null ? "" : String(value));
+import { host } from "../core/host.js";
+import { esc } from "../core/escape.js";
+
+/**
+ * Anything user- or data-supplied that reaches an HTML string goes through this.
+ *
+ * Re-exported from `core/escape.js` rather than defined here, and that module
+ * has no host behind it. Every other function in this file is a *reading*
+ * decision that a different environment could reasonably make differently; this
+ * one is a safety property, and a safety property that can be swapped out is not
+ * one.
+ */
+export { esc };
 
 /**
  * A value that may be no value at all, read as an em dash.
@@ -57,7 +68,7 @@ export const count = (value) => (value == null ? "—" : Number(value).toLocaleS
 export const percent = (value) => (value == null ? "—" : `${value}%`);
 
 /** A date in the reader's format, not the database's. */
-export const date = (value) => frappe.datetime.str_to_user(value);
+export const date = (value) => host("fmt.date").format_date(value);
 
 /**
  * A duration given in hours, in whichever unit keeps it readable.
@@ -69,13 +80,14 @@ export function duration(hours) {
 	if (hours == null) {
 		return "—";
 	}
+	const t = (text, args) => host("fmt.duration").t(text, args);
 	if (hours < 1) {
-		return __("{0} min", [Math.round(hours * 60)]);
+		return t("{0} min", [Math.round(hours * 60)]);
 	}
 	if (hours < 48) {
-		return __("{0} h", [Math.round(hours * 10) / 10]);
+		return t("{0} h", [Math.round(hours * 10) / 10]);
 	}
-	return __("{0} d", [Math.round((hours / 24) * 10) / 10]);
+	return t("{0} d", [Math.round((hours / 24) * 10) / 10]);
 }
 
 /**
@@ -87,16 +99,26 @@ export function duration(hours) {
  *
  * A delta of exactly zero is neutral — the good/bad reading only means something
  * once something actually moved.
+ *
+ * TAKES AN OBJECT, NOT THREE ARGUMENTS, AND WHY THAT CHANGED
+ * Until v0.3.0 a spec carried `delta` as the **HTML string** this returned, and
+ * the `kpis` panel interpolated it raw. That was the one place in the renderer
+ * where a spec value reached the page without passing through `esc`, and nothing
+ * marked it as such — a panel written next to it would copy the pattern and put
+ * a genuine value through the same hole. Now the spec carries the reading
+ * (`{value, good, unit}`), the panel calls this, and the "everything is escaped"
+ * rule has no exception outside `{type: "html"}`.
  */
-export function delta(value, good, unit) {
-	if (value == null) {
+export function delta(spec) {
+	if (!spec || spec.value == null) {
 		return "";
 	}
+	const { value, good, unit } = spec;
 	const rising = value > 0;
 	const tone = value === 0 ? "flat" : rising === (good === "up") ? "up" : "down";
 	const arrow = value === 0 ? "" : rising ? "▲ " : "▼ ";
 	const suffix = unit ? ` ${unit}` : "";
-	return `<span class="dd-delta dd-delta-${tone}">${arrow}${Math.abs(value)}${esc(suffix)}</span>`;
+	return `<span class="dd-delta dd-delta-${tone}">${arrow}${esc(Math.abs(value))}${esc(suffix)}</span>`;
 }
 
 /**

@@ -15,16 +15,24 @@
  * they are.
  *
  * The mount loop below is a deliberate near-duplicate of
- * `controller.js#mount_charts`. The controller cannot be reused: it wants a
+ * `controller.js#run_mounts`. The controller cannot be reused: it wants a
  * Frappe page object with `add_field` and `set_primary_action`, and stubbing
  * those would be stubbing more of Desk than this page is worth.
  */
 
 import "./frappe-stub.js";
 
-import { render } from "../dashboard/index.js";
-import { chart, sparkline, token, colour, markers, bounds } from "../dashboard/charts.js";
-import { blank } from "../dashboard/format.js";
+// The charting engine is its own entry point since v0.4.0, so this bare import
+// is exactly what a consuming app writes in its own bundle file. The gallery
+// draws charts, so the gallery pays for the engine; a dashboard of KPIs and a
+// table does not.
+import "../charts/echarts.js";
+
+import { render, panels } from "../index.js";
+import { colour, markers, bounds } from "../index.js";
+import { fmt } from "../index.js";
+
+const { blank } = fmt;
 
 /* ─────────────────────────────────────────────────────────── sample data ── */
 
@@ -412,6 +420,44 @@ const showcase = (title, hint, key, height) => ({
 	body: { type: "chart", option: CHARTS[key], height: height || 260 },
 });
 
+/* ───────────────────────────────────────────────────── a panel of our own ── */
+
+/**
+ * What a consuming app writes to add a panel type, drawn on this page so the
+ * extension point is exercised rather than only described.
+ *
+ * Both halves are here: `render` is pure and returns a string, `mount` is handed
+ * the element once it is on the page and returns its own teardown. Before v0.4.0
+ * neither existed for anything but a chart, and a panel that needed to *do*
+ * something had to be `{type: "html"}` — the escape hatch that is documented as
+ * unescaped and has already put values scraped off a supplier's portal into
+ * hand-escaped strings.
+ *
+ * Note `fmt.esc` on the label. A panel written outside this repo is held to the
+ * same rule as one written inside it, and nothing enforces that for you.
+ */
+panels.define("counter", {
+	render(node, pass) {
+		return `
+			<div class="dd-field" data-dd-mount="${pass.defer("counter", node)}">
+				<div class="dd-field-label">${fmt.esc(node.label)}</div>
+				<div class="dd-field-value" data-count>0</div>
+			</div>`;
+	},
+	mount(el, node) {
+		const output = el.querySelector("[data-count]");
+		let n = 0;
+		const tick = () => {
+			n += 1;
+			output.textContent = String(n);
+		};
+		el.addEventListener("click", tick);
+		// The teardown. The controller runs it before the next draw replaces this
+		// element, which is what stops a live panel leaking across a refresh.
+		return () => el.removeEventListener("click", tick);
+	},
+});
+
 const SPEC = {
 	title: "Dashboard toolkit — gallery",
 	meta: ["Sample data", "Every panel and chart type the toolkit can draw"],
@@ -489,6 +535,45 @@ const SPEC = {
 					},
 				},
 			],
+		},
+
+		{
+			type: "card",
+			title: "A panel this repo does not define",
+			hint: "registered by the gallery with panels.define — click it",
+			body: {
+				type: "grid",
+				columns: 3,
+				blocks: [
+					{ type: "counter", label: "Clicks on this card" },
+					{ type: "counter", label: "And on this one" },
+					{
+						type: "text",
+						text: "Both are the same panel type, mounted separately, each with its own teardown.",
+					},
+				],
+			},
+		},
+
+		{
+			type: "card",
+			title: "A panel with no numbers yet",
+			hint: "any panel takes `state`, and the panel itself never sees the node",
+			body: {
+				type: "grid",
+				columns: 3,
+				blocks: [
+					{ type: "kpis", state: "loading", label: "Loading", items: [] },
+					{ type: "kpis", state: "empty", label: "Empty", items: [] },
+					{
+						type: "kpis",
+						state: "error",
+						label: "Error",
+						message: "Timed out after 30s.",
+						items: [],
+					},
+				],
+			},
 		},
 
 		{ type: "section", title: "Fields and tables" },
@@ -590,7 +675,7 @@ const SPEC = {
 
 	footer: [
 		{ label: "dashboard/README.md", href: "../dashboard/README.md" },
-		{ label: "dashboard/dash.scss", href: "../dashboard/dash.scss" },
+		{ label: "ui/styles/dash.scss", href: "../ui/styles/dash.scss" },
 	],
 };
 
@@ -606,40 +691,29 @@ if (new URLSearchParams(location.search).get("theme") === "dark") {
 
 const body = document.querySelector(".dd-page");
 
-// `render` writes through jQuery's `.html()` on a Desk page. That one method is
-// the entire surface it uses, so the gallery hands it this instead of pulling in
-// jQuery for a single call.
-const container = {
-	html: (markup) => {
-		body.innerHTML = markup;
-	},
-};
-
 // What the controller does before its first draw, and only its first draw.
 body.classList.add("dd-enter");
 
-const pass = render(container, SPEC);
+// Since v0.3.0 `render` takes a plain element. It used to write through
+// jQuery's `.html()`, and the gallery handed it a one-method shim rather than
+// pull in jQuery for a single call.
+const pass = render(body, SPEC);
 
-// Mirrors `controller.js#mount_charts`, including the deferral: ECharts measures
+// Mirrors `controller.js#run_mounts`, including the deferral: ECharts measures
 // its container at init, and the markup above was written this same tick, so a
 // chart built synchronously sizes to 0px and draws nothing at all — silently,
 // which is what makes it worth repeating here.
+//
+// Since v0.4.0 this loop knows nothing about charts. Each mount slot records
+// which panel claimed it, and the panel mounts itself — which is the same code
+// path a consuming app's own panel takes, so the gallery exercises the
+// extension point rather than a special case beside it.
 requestAnimationFrame(() => {
-	body.querySelectorAll("[data-dd-chart]").forEach((el) => {
-		const slot = el.getAttribute("data-dd-chart");
-		if (slot === "") {
-			return;
-		}
-		const entry = pass.charts[Number(slot)];
-		if (entry.kind === "spark") {
-			sparkline(el, {
-				values: entry.item.series,
-				labels: entry.item.series.map((_, i) => i + 1),
-				color: token(entry.token, "#a1a1aa"),
-			});
-			return;
-		}
-		chart(el, entry.node.option);
+	const context = { range: () => ({}), follow: () => {} };
+	body.querySelectorAll("[data-dd-mount]").forEach((el) => {
+		const entry = pass.mounts[Number(el.getAttribute("data-dd-mount"))];
+		const panel = entry && panels.find(entry.panel);
+		panel?.mount?.(el, entry.data, context);
 	});
 });
 

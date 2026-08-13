@@ -18,6 +18,10 @@
  * previous range's rows.
  */
 
+import { host } from "../core/host.js";
+import { esc } from "../core/escape.js";
+import { delegate } from "../core/dom.js";
+
 export const DRILL_ATTR = "data-dd-drill";
 
 /**
@@ -39,8 +43,8 @@ export function attrs(registry, drill, context) {
 	// list it opens is rows, so "Open these 12" would be a promise the list
 	// cannot keep. A descriptor that really does open exactly the counted rows
 	// can say so with its own `hint`.
-	const hint = drill.hint || __("Open the underlying records");
-	return `${DRILL_ATTR}="${index}" class="dd-drillable" role="link" tabindex="0" title="${frappe.utils.escape_html(hint)}"`;
+	const hint = drill.hint || host("drill").t("Open the underlying records");
+	return `${DRILL_ATTR}="${index}" class="dd-drillable" role="link" tabindex="0" title="${esc(hint)}"`;
 }
 
 /**
@@ -53,12 +57,47 @@ export function attrs(registry, drill, context) {
  * aggregates in the reader's timezone must therefore leave the list unfiltered
  * by date and say so, rather than show two different truths.
  */
-function list_filters(drill, range) {
-	const filters = Object.assign({}, drill.filters);
+function list_filters(drill, context) {
+	const range = context && context.range;
+	const filters = Object.assign({}, inherited(drill, context), drill.filters);
 	if (drill.date_field && range && range.from_date && range.to_date) {
 		filters[drill.date_field] = ["Between", [range.from_date, range.to_date]];
 	}
 	return filters;
+}
+
+/**
+ * The page's own filters, carried into the list — but only the ones the
+ * descriptor asked for.
+ *
+ * `inherit: ["company"]` names them; `inherit: true` takes every filter the page
+ * has set. Opt-in rather than automatic, and this is the one decision in the file
+ * worth arguing about, so: a dashboard filter is a fieldname on whatever the
+ * backend aggregates, and the list a figure opens is frequently a different
+ * doctype. Passing `warehouse` to a list of Sales Invoices produces a list view
+ * that errors on an unknown field, which turns every drill on the page into a
+ * dead end the moment somebody adds a filter — a failure caused by a change
+ * nowhere near the drill.
+ *
+ * Explicit filters on the descriptor win over inherited ones. A drill that says
+ * `filters: {company: "Acme"}` means it, and the page filter must not overwrite
+ * an answer the panel already knows.
+ */
+function inherited(drill, context) {
+	const active = (context && context.filters) || {};
+	if (drill.inherit === true) {
+		return { ...active };
+	}
+	if (!Array.isArray(drill.inherit)) {
+		return {};
+	}
+	const out = {};
+	for (const fieldname of drill.inherit) {
+		if (active[fieldname] !== undefined) {
+			out[fieldname] = active[fieldname];
+		}
+	}
+	return out;
 }
 
 /**
@@ -73,14 +112,14 @@ export function follow(drill, context) {
 		return;
 	}
 	if (drill.route) {
-		frappe.set_route(drill.route);
+		host("drill").route(drill.route);
 		return;
 	}
 	if (drill.doctype) {
 		// `set_route` with a filter object goes through the list view's own filter
 		// area, so the opened list shows the filters as chips the user can edit —
 		// a query string would apply them invisibly.
-		frappe.set_route("List", drill.doctype, list_filters(drill, context.range));
+		host("drill").route("List", drill.doctype, list_filters(drill, context));
 	}
 }
 
@@ -94,26 +133,28 @@ export function follow(drill, context) {
  * respectively lead a keyboard user to expect. Space is prevented from its
  * default scroll; Enter has none to prevent.
  */
-export function bind(body, resolve) {
-	const activate = (event) => {
-		const target = $(event.currentTarget);
-		const drill = resolve(Number(target.attr(DRILL_ATTR)));
+export function bind(root, resolve) {
+	const activate = (event, target) => {
+		const drill = resolve(Number(target.getAttribute(DRILL_ATTR)));
 		if (!drill) {
 			return;
 		}
 		// A drillable row can contain its own links ("Error Log"). Those are real
 		// anchors and must win, or the row would swallow every one of them.
-		if ($(event.target).closest("a, button").length) {
+		if (event.target.closest("a, button")) {
 			return;
 		}
 		event.preventDefault();
 		follow(drill.descriptor, drill.context);
 	};
 
-	body.on("click", `[${DRILL_ATTR}]`, activate);
-	body.on("keydown", `[${DRILL_ATTR}]`, (event) => {
-		if (event.key === "Enter" || event.key === " ") {
-			activate(event);
-		}
-	});
+	const off = [
+		delegate(root, "click", `[${DRILL_ATTR}]`, activate),
+		delegate(root, "keydown", `[${DRILL_ATTR}]`, (event, target) => {
+			if (event.key === "Enter" || event.key === " ") {
+				activate(event, target);
+			}
+		}),
+	];
+	return () => off.forEach((unbind) => unbind());
 }

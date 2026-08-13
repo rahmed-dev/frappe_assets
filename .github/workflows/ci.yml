@@ -1,0 +1,45 @@
+# The checks that used to be a paragraph in CONTRIBUTING.md asking a human to
+# remember them.
+#
+# The gallery build is here as well as the tests, because it is the only thing
+# that resolves `echarts/*` and compiles the Sass — a broken import or a Sass
+# error is otherwise invisible until someone runs `yarn demo` locally. It cannot
+# replace *looking* at the gallery, which stays mandatory and stays manual: half
+# the defects in this repo are visual and only exist in one theme.
+
+name: CI
+
+on:
+  push:
+    branches: [main, next]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+
+      - name: Syntax
+        run: |
+          find core ui dashboard demo test -name '*.js' -o -name '*.mjs' \
+            | xargs -n1 node --check
+
+      # Before the tests, not after: one of them loads the built bundle and
+      # skips itself when there is none, which would quietly pass on CI.
+      - name: Gallery build
+        run: yarn demo
+
+      - name: Tests
+        run: yarn test
+
+      - name: Version agreement
+        # The version is a fact about the code, so `package.json`, `core/version.js`
+        # and the top of `CHANGELOG.md` have to say the same thing in the same
+        # commit. Splitting them is how a tag ends up describing the wrong tree.
+        run: node scripts/check-version.mjs

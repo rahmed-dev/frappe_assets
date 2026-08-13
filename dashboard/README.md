@@ -6,17 +6,22 @@ refresh, loading and error states, ⓘ explainers, drill-down, and charts.
 
 ```js
 frappe.pages["my-dashboard"].on_page_load = function (wrapper) {
-	const page = frappe.ui.make_app_page({ parent: wrapper, title: __("My Dashboard") });
-
 	frappe.require("my_dash.bundle.js").then(() => {
-		new myapp.dash.Dashboard(page, {
-			fetch: (range) =>
-				frappe.call({ method: "myapp.api.summary", args: range }).then((r) => r.message),
-			spec: (data, range) => ({ ... }),
+		myapp.dash.dd.page(wrapper, {
+			title: __("My Dashboard"),
+			filters: [{ fieldname: "company", fieldtype: "Link", options: "Company" }],
+			method: "myapp.api.summary",
+			spec: (data, state) => ({ ... }),
 		});
 	});
 };
 ```
+
+`dd.page` builds the Desk page, the state, the resource and the controller, and
+is idempotent per wrapper — Desk calls `on_page_load` once per route entry, and a
+second controller on one wrapper means two sets of handlers and two fetches per
+date change. Everything it does stays available as a class: `new Dashboard(page,
+options)` against a page you made yourself is still the whole API.
 
 A Desk page's own JS is loaded raw and **cannot `import`**, which is why the
 toolkit arrives through a built bundle on a namespace. See the repo `CLAUDE.md`
@@ -26,13 +31,82 @@ for the two-file integration.
 
 | Option | Default | |
 |---|---|---|
-| `fetch(range)` | — | **required.** Returns a promise of your data. |
-| `spec(data, range)` | — | **required.** Pure function returning the spec below. |
+| `fetch(state, {signal})` | — | **required** unless `method` is given. Returns a promise of your data. `signal` aborts a request the page has already superseded; ignoring it is fine. |
+| `method` | — | A whitelisted method name, called through the host and resolving to its `message`. The short form of `fetch`. |
+| `spec(data, state)` | — | **required.** Pure function returning the spec below. |
+| `filters` | `[]` | Declared filters — see below. Each becomes a Desk control and a key in `state`. |
 | `presets` | `[7, 30, 90]` | Quick-range chips. `[]` omits the strip. |
 | `default_days` | `30` | Opening window. |
 | `dated` | `true` | `false` drops the date fields entirely. |
+| `sync` | `true` | `false` leaves the query string alone. |
+| `cache` | `0` | ms an identical question is answered from the last answer. |
+| `poll` | `0` | ms between automatic reloads. Ticks are skipped while the tab is hidden. |
+| `realtime` | `""` | A `frappe.realtime` event that triggers a reload. |
+| `state` / `resource` | — | Bring your own, for two dashboards driven by one filter bar. A passed-in one is not destroyed with the dashboard. |
 | `page_class` | `""` | Extra class on the page body, for page-local CSS. |
 | `namespace` | `"dd"` | Only matters if two dashboards can be open at once. |
+| `on` | `{}` | Lifecycle handlers by event name — see below. |
+
+The second argument to `fetch` and `spec` is the **whole state** — the date
+window and every filter that is set. With no filters declared that is the same
+`{from_date, to_date}` it has always been, which is why an existing page needs no
+edits.
+
+## Filters
+
+```js
+filters: [
+	{ fieldname: "company", fieldtype: "Link", options: "Company", label: __("Company") },
+	{ fieldname: "status", fieldtype: "Select", options: ["Open", "Closed"], default: "Open" },
+]
+```
+
+Declaring one is the whole job. It becomes a Desk control in the page head, a key
+in what `fetch` receives, a parameter in the query string — so a filtered
+dashboard is a link somebody can send — and, for a drill that asks, a filter on
+the list it opens. `dashboard.state` is the object underneath: `get()`,
+`range()`, `filters()`, `set(patch)`, `reset()`, and `on(handler)` firing once per
+patch.
+
+Only declared keys are read back off a URL. The object built from a query string
+is handed to a whitelisted method, and accepting undeclared keys would let a link
+decide what arguments that method receives.
+
+## Panel states
+
+Any node may say it has nothing to draw yet:
+
+```js
+{ type: "table", state: "loading" }
+{ type: "table", state: "empty", message: __("No orders in this range.") }
+{ type: "table", state: "error", message: error.message }
+```
+
+`loading` is a skeleton that holds the panel's space, so the page does not jump
+when the answer lands. `empty` and `error` look **different** on purpose: both
+are an absence of numbers, and a page that paints them alike teaches its readers
+to read a failed query as a quiet month. Give each panel its own `Resource` and
+one failing query stops blanking the other five.
+
+## Lifecycle events
+
+`new Dashboard(page, {on: {...}})`, or `dashboard.on(event, handler)`, which
+returns its own unbinder. A handler that throws is reported through the host and
+does not stop the others; this sits on the render and fetch path, and a logging
+callback must not be able to take the page down.
+
+| Event | Payload | When |
+|---|---|---|
+| `before_fetch` | `{range, state}` | a request is about to go out |
+| `after_fetch` | `{range, state, data}` | it landed, and it is the newest one |
+| `before_render` | `{spec}` | before the previous render is torn down |
+| `after_render` | `{spec, body}` | markup written; the mount phase has not run yet |
+| `error` | `{error, panel?}` | a fetch failed, or a panel failed to mount |
+| `destroy` | `{}` | `destroy()` was called |
+
+These exist so that timing a query, logging a failure or touching the markup
+afterwards has somewhere honest to live. The alternative was wrapping `fetch` or
+mutating `spec`, which makes two pure functions carry someone else's concern.
 
 ## The spec
 
@@ -57,9 +131,14 @@ Every panel is `{type, …}`. Anything with a `drill` becomes clickable.
 { type: "kpis", columns: 5, items: [
     { label, value, sub, delta, dot: "danger"|"warning"|"success"|"info", explain, drill } ] }
 ```
-`value` is a **formatted string** — run it through `fmt` first. `delta` is HTML
-from `fmt.delta(n, "up"|"down", unit)`; the second argument names the direction
-that is *good news*, which differs per card.
+`value` is a **formatted string** — run it through `fmt` first. `delta` is a
+reading, `{value, good: "up"|"down", unit}`; `good` names the direction that is
+*good news*, which differs per card — a rising conversion rate is good, a rising
+failure count is not. A delta of exactly zero is neutral and draws no arrow.
+
+Until v0.3.0 this key held the HTML string `fmt.delta()` returned, and the panel
+interpolated it raw — the one spec value in the whole renderer that reached the
+page without passing through `esc`.
 
 **`bars`** — proportion bars. HTML, not a chart: a chart auto-scales its axis, sizes
 to its container rather than its rows, and hides the value in a tooltip.
@@ -137,10 +216,16 @@ the canvas when the Desk theme flips. Pass a **function** when a series needs a
 semantic colour (`palette.danger`) and must still follow the theme. `drill`
 receives the clicked datum.
 
+**The engine is a separate import.** `import "frappe-assets/charts/echarts";` in
+your app's bundle file is what registers it; without it this panel throws
+`NoChartEngineError` naming that line. A dashboard that draws no charts adds
+nothing and carries no engine — 30 KB of bundle instead of 727 KB, measured.
+
 Registered series types: **line, bar, pie, scatter, funnel, sankey, treemap,
 sunburst, heatmap, gauge, radar** — plus the grid, legend, tooltip, dataZoom,
 visualMap and markLine components. Anything else needs one more entry in
-`echarts.use()` in `charts.js` and a panel added to the gallery. Every one of
+`echarts.use()` in `charts/echarts.js` and a panel added to the gallery, or
+`use_series(YourChart)` in the consuming app. Every one of
 them is drawn in `demo/index.html`; **look there before designing a dashboard**,
 it is faster than guessing and it is the only place the unused ones are visible.
 
@@ -172,6 +257,46 @@ An unknown `type` throws rather than rendering nothing — a silently skipped pa
 looks like a backend that returned no data, and the wrong half of the stack gets
 debugged.
 
+### Writing your own panel
+
+Since v0.4.0 the panel list is a registry, and a panel your app writes is the
+same kind of thing as a built-in one. This is the answer whenever the vocabulary
+is one field short — not `{type: "html"}`, which is unescaped by definition and
+has already put values scraped off a supplier's portal into hand-escaped strings.
+
+```js
+import { panels, fmt } from "frappe-assets";
+
+panels.define("gantt", {
+  // Pure. Returns a string. Escapes everything it did not generate itself.
+  render: (node, pass) =>
+    `<div class="my-gantt" data-dd-mount="${pass.defer("gantt", node)}">
+       ${fmt.esc(node.label)}
+     </div>`,
+
+  // Optional. Runs once the element is on the page and has been laid out —
+  // which is what anything measuring its own container needs.
+  // RETURN THE TEARDOWN: the controller runs it before the next draw, and a
+  // panel that holds a listener or an observer without one keeps its element
+  // alive for the rest of the Desk session.
+  mount: (el, node, context) => {
+    const chart = new Gantt(el, node.tasks);
+    return () => chart.destroy();
+  },
+});
+```
+
+`context` is `{dashboard, range(), follow(descriptor, context), emit(event, payload)}`.
+`follow` is the same drill machinery the built-in panels use.
+
+`define` throws on a name already taken, naming it — silent last-one-wins is how
+an app shadows `table` for every other page in the same Desk session and finds
+out somewhere the definition is not. Replacing a built-in on purpose is
+`redefine`, which reads that way at the call site.
+
+The gallery draws one of these, so the extension point is exercised rather than
+only described.
+
 ## Drill-down
 
 ```js
@@ -190,6 +315,23 @@ timestamps; if your aggregation works in the reader's timezone and the site
 stores another, a date filter opens a list that disagrees with the row just
 clicked. Injecting it silently would make that mismatch the default.
 
+### Inheriting the page's filters
+
+```js
+{ doctype: "Sales Invoice", inherit: ["company"] }   // just this one
+{ doctype: "Sales Invoice", inherit: true }          // every filter that is set
+```
+
+Opt-in, and this is the decision worth understanding rather than copying. A
+dashboard filter is a fieldname on whatever the backend aggregates, and the list
+a figure opens is frequently a different doctype. Passing `warehouse` to a list
+of Sales Invoices produces a list view that errors on an unknown field — so an
+automatic version would turn every drill on the page into a dead end the moment
+somebody added a filter, a failure caused by a change nowhere near the drill.
+
+A filter on the descriptor itself wins over an inherited one: the panel knows
+something more specific than the page does.
+
 The hover hint says "Open the underlying records" rather than naming a count,
 because a dashboard figure is usually an aggregate — distinct sessions, distinct
 customers — while the list it opens is rows. Set `drill.hint` when a descriptor
@@ -198,7 +340,7 @@ really does open exactly the counted records.
 ## `fmt`
 
 `esc` · `blank(value, extra)` · `count` · `percent` · `date` · `duration(hours)`
-· `delta(value, good, unit)` · `trend(series)`
+· `delta({value, good, unit})` · `trend(series)`
 
 `count` is `Number(v).toLocaleString()` and **not** `frappe.format(v, {fieldtype:
 "Int"})` — that returns HTML, which prints as literal markup wherever a string
@@ -216,7 +358,7 @@ and not to every dashboard.
 ## Tones
 
 `success` · `warning` · `danger` · `info` · `quiet` — the one status vocabulary,
-in `tone.js`. A cell, a KPI dot, a `rows` stripe, a pill and a chart series all
+in `ui/tone.js`. A cell, a KPI dot, a `rows` stripe, a pill and a chart series all
 read from it, which is what makes them agree.
 
 A tone is a **fact about the value** — this reading is bad, these two records
@@ -242,11 +384,22 @@ Beside `chart()`, for the cartesian charts that carry a rule:
   see. `pad` accepts `[below, above]`: bars want `[0, 0.1]` so the baseline stays
   at zero, a trend wants the default.
 
+A consuming app may add its own tone rather than reach for `{type: "html"}` to
+get a colour the vocabulary lacks:
+
+```js
+tones.define("stale", { token: "--dd-warning", palette: "warning" });
+```
+
+The classes are derived from the name — `dd-pill-stale`, `dd-cell-stale`,
+`dd-row-stale` — and the app ships those three rules in its own stylesheet, or
+the map promises a colour nothing paints.
+
 ## Styling
 
-`dash.scss` owns its palette on `.dd-page`, with an explicit `[data-theme="dark"]`
-block. Read the repo `CLAUDE.md` before adding a colour — Frappe's semantic
-tokens carry three traps this deliberately avoids.
+`ui/styles/dash.scss` owns its palette on `.dd-page`, with an explicit
+`[data-theme="dark"]` block. Read the repo `CLAUDE.md` before adding a colour —
+Frappe's semantic tokens carry three traps this deliberately avoids.
 
 Page-local CSS goes in the page's own stylesheet, scoped under `page_class`. If a
 rule would read sensibly on another dashboard, it belongs in `dash.scss` instead.
