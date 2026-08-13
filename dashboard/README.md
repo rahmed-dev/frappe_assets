@@ -109,16 +109,24 @@ headline of the page. `tone` tints a value that is itself a finding.
 ```js
 { type: "table",
   columns: [{ label, key, numeric, align: "right"|"center" }],
-  rows: [{ …, drill }] }
+  rows: [{ …, tone, drill }] }
 ```
-A cell is either a plain value or `{ value, tone, pill }`. `tone` shifts the ink,
-for a cell whose value **is** the finding — a reading out of range, a field two
-systems disagree about. `pill: true` renders it as a pill instead, for a cell
-holding a *state* rather than a measurement.
+A cell is either a plain value or `{ value, tone, pill, tag }`. `tone` shifts the
+ink, for a cell whose value **is** the finding — a reading out of range, a field
+two systems disagree about. `pill: true` renders it as a pill instead, for a cell
+holding a *state* rather than a measurement. `tag` prints a short quiet word
+after the value — `DS+US` beside a channel number that carries upstream too —
+where the cell is still the value and the tag says what it also is.
 
-Both are optional and a bare value behaves as it always has. Reach for them
+A **row** takes `tone` too, tinting the whole row. That is for a fact about the
+record: the four channels of sixteen that transmit, the rows an import skipped.
+It is not a second way to say what a cell already says — colouring a row because
+one cell in it is bad spreads that verdict over six readings that were fine.
+
+All of it is optional and a bare value behaves as it always has. Reach for these
 rather than rebuilding the table as `{type: "html"}`: every cell here goes
-through `fmt.esc`, and colour is not worth hand-rolling your own escaping for.
+through `fmt.esc`, and neither colour nor a tag is worth hand-rolling your own
+escaping for.
 
 **`chart`** — an ECharts option, passed through untouched.
 ```js

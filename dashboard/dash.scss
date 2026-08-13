@@ -797,6 +797,45 @@ body:not(.full-width) .dd-host .container {
 	color: var(--dd-info-fg);
 }
 
+/* A row that is itself a category — the four channels of sixteen that also
+   transmit, the rows an import skipped. Background here and ink on the cells,
+   which is the opposite way round from `dd-cell-*` above and is what keeps the
+   two readable together: a tinted row still shows its own bad cell in red, where
+   two competing inks on one `td` would not.
+   Faint on purpose. This says "these rows are a set", not "these rows are
+   wrong", and a tint at verdict strength competes with every graded cell sitting
+   on it. Same specificity story as the cells — `tbody td` sets `background` at
+   (0,3,1), so the `> td` selector is the one that lands.
+   The `-bg` tokens are re-tuned in §15, so this needs no dark-block entry. */
+.dd-page .dd-table tbody tr.dd-row-success > td {
+	background: var(--dd-success-bg);
+}
+.dd-page .dd-table tbody tr.dd-row-warning > td {
+	background: var(--dd-warning-bg);
+}
+.dd-page .dd-table tbody tr.dd-row-danger > td {
+	background: var(--dd-danger-bg);
+}
+.dd-page .dd-table tbody tr.dd-row-info > td {
+	background: var(--dd-info-bg);
+}
+
+/* A tag: a short word after a value saying what the value also is. Sized and
+   weighted to sit UNDER the value it follows — it is an annotation, and one set
+   at reading size reads as a second column that lost its heading.
+   `--dd-info-fg` and not `currentColor`: a tag inherits the tone of whatever
+   cell it lands in otherwise, so the same marker would print red on a bad row
+   and grey on an ungraded one, saying something about the reading that it does
+   not mean. Info is the toolkit's tone for a fact that is not a verdict, which
+   is exactly what a tag carries. */
+.dd-page .dd-tag {
+	margin-left: var(--dd-space-1);
+	font-size: var(--dd-text-xs);
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	color: var(--dd-info-fg);
+}
+
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  * §11 · PRESET CHIPS — quick date ranges
  *

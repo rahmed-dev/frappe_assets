@@ -55,6 +55,9 @@ const HOURS = ["00", "03", "06", "09", "12", "15", "18", "21"];
    response time per node, against the two limits it is judged by. */
 const NODES = ["edge-01", "edge-02", "edge-03", "edge-04", "edge-05", "edge-06", "edge-07"];
 const LATENCY = [42, 61, 88, 104, 152, 210, 73];
+// The nodes that also relay for their neighbours — a category, not a verdict,
+// which is what a row tone and a tag are for.
+const RELAYS = ["edge-02", "edge-05"];
 const LIMITS = [
 	{ value: 100, tone: "warning", label: "target" },
 	{ value: 200, tone: "danger", label: "breach" },
@@ -519,7 +522,7 @@ const SPEC = {
 				{
 					type: "card",
 					title: "Nodes",
-					hint: "a tone on the cell that carries the finding",
+					hint: "a tone on the cell that carries the finding, a tint on the rows that are a set",
 					body: {
 						type: "table",
 						columns: [
@@ -528,9 +531,15 @@ const SPEC = {
 							{ label: "State", key: "state", align: "center" },
 						],
 						rows: NODES.map((node, i) => ({
-							node,
+							// A row tone is a fact about the RECORD — these two also relay
+							// for their neighbours — and never a louder copy of the cell
+							// verdict beside it: edge-06 is breached and unremarkable, and
+							// the two tinted rows are fine.
+							tone: RELAYS.includes(node) ? "info" : undefined,
+							// A tag says what the value also is. The cell is still the node.
+							node: { value: node, tag: RELAYS.includes(node) ? "RELAY" : undefined },
 							// A tone tints the reading; a pill is for a cell holding a
-							// state rather than a measurement. Both keep their escaping.
+							// state rather than a measurement. All of it keeps its escaping.
 							response: { value: `${LATENCY[i]} ms`, tone: grade(LATENCY[i]) },
 							state: { value: STATE[grade(LATENCY[i])], tone: grade(LATENCY[i]), pill: true },
 						})),
