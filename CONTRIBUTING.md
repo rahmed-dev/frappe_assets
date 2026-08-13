@@ -217,6 +217,68 @@ Tags are immutable once pushed. A mistake is a new version, never a moved tag �
 a consumer's `yarn.lock` pins the commit a tag pointed at, and moving it means
 two apps resolve the same version to different code.
 
+### The GitHub release note
+
+`gh release create v0.x.0 --title "…" --notes-file <file>`, against the tag that
+already exists. Three rules, and they exist because the release page has exactly
+one reader: somebody deciding whether to take this version, and what it will
+cost them.
+
+**1. Lead with the features, not the refactor.** A release note lists what a
+consuming app can now *do* that it could not before. Internal moves — a file
+that changed directory, a class that was extracted, a registry that replaced a
+`const` — belong in `CHANGELOG.md`, which is the log, and in the commit message,
+which is the record. They are not features and they do not go here.
+
+**2. Every feature says which problem it removes.** One line of what it does,
+one line of what it saves. "Declared filters" means nothing on its own; "declare
+a filter once instead of wiring the control, the fetch parameter, the query
+string and the drill in four places" is the same feature written for the person
+paying for it. If a change has no such line, it is not a release-note item.
+
+**3. The guide is not the note.** Usage documentation — how to write a spec,
+every panel option, worked examples — lives in the **GitHub wiki**, and the
+release note links to it. The note covers what is new, the consumer action, and
+where to read more. It is not the place to teach the library, and a note long
+enough to teach it is a note nobody reaches the end of.
+
+**4. Write it for a web developer who has never read this repo.** The reader
+knows JavaScript and probably knows Frappe; they do not know our vocabulary. So
+no in-house words without a plain gloss: *the barrel* is "the main import", *a
+drill* is "clicking a number to open the matching list view", *a tone* is "the
+colour that says whether a value is good or bad", *the spec* is "the object
+describing the dashboard". Prefer the ordinary word over the precise one when
+they compete — "the file you import" beats "the entry point", "loads about 700
+KB less" beats "reduces the module graph". A sentence that only makes sense to
+somebody who has read `core/` has failed, however accurate it is.
+
+Keep it to what a reader needs before upgrading:
+
+- what is new, as features
+- **Consumer action** — the same line as the changelog, verbatim
+- what was verified and what was not
+- rollback, in one line
+- links: the wiki for the guide, `MIGRATING-*.md` for the details
+
+### Where documentation lives
+
+| Where | What | Who reads it |
+|---|---|---|
+| **GitHub wiki** | the user guide — writing a spec, panel reference, recipes | somebody building a dashboard |
+| `CONTRACT.md` | the names a page may depend on, and the version rules | somebody deciding if an upgrade is safe |
+| `CHANGELOG.md` | every change, with its **Consumer action** | somebody upgrading across several versions |
+| `MIGRATING-x-to-y.md` | one break in detail, with before/after code | somebody hitting that specific break |
+| the release note | what is new and what it costs | somebody deciding whether to upgrade |
+| `README.md` | what this is and how to install it | somebody arriving for the first time |
+| this file | how the library is written and changed | somebody changing it |
+
+The wiki is deliberately **not** in the repo. `yarn` clones an entire git
+dependency — the `files` field does not apply — so a guide checked in here would
+land in the `node_modules` of every consuming app, which is the same reason the
+Server Script bodies were moved out to `rahmed-dev/dev_kb`. The wiki is a
+separate git repository on the same project, which is exactly the property
+wanted: editable, versioned, linkable, and not shipped.
+
 ---
 
 ## 5. How a consuming app upgrades
