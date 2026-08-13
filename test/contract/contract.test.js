@@ -43,6 +43,10 @@ const stylesheet = read("ui/styles/dash.scss");
  *
  * `core/spec.js` writes markup too, since v0.5.0: the per-panel loading, empty
  * and error placeholders live in the kernel rather than in twelve panels.
+ *
+ * `ui/export.js` since v0.6.0, for the same reason as `ui/tone.js`: the download
+ * toolbar is built in one place and emitted by two panels, and a rename there
+ * reaches both of them at once.
  */
 const emitters = [
 	"core/spec.js",
@@ -50,6 +54,7 @@ const emitters = [
 	"dashboard/controller.js",
 	"dashboard/drill.js",
 	"ui/tone.js",
+	"ui/export.js",
 	...readdirSync(join(root, "dashboard", "panels"))
 		.filter((file) => file.endsWith(".js"))
 		.map((file) => `dashboard/panels/${file}`),

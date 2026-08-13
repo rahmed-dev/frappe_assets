@@ -48,7 +48,7 @@ import {
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import { engines } from "./adapter.js";
-import { palette, merge } from "./helpers.js";
+import { palette, merge, token } from "./helpers.js";
 
 // The registered set is what `demo/index.html` draws, and the two are meant to
 // stay in step: a gallery advertising a chart the toolkit cannot render is a
@@ -342,7 +342,18 @@ export const EChartsEngine = {
 	sparkline,
 	dispose,
 	retheme,
-	toDataURL: (el) => echarts.getInstanceByDom(el)?.getDataURL({ pixelRatio: 2 }),
+	// `backgroundColor` is not optional. A chart canvas is transparent, and a
+	// transparent PNG of white-on-dark axis labels is an empty rectangle in every
+	// viewer that puts white behind it — which is a picture that looks correct on
+	// the page and blank in the mail it was sent in. The surface token is resolved
+	// against this element, so the export matches the theme it was taken from.
+	// `pixelRatio: 2` because the file is going into a document, not back onto a
+	// screen the same size.
+	toDataURL: (el) =>
+		echarts.getInstanceByDom(el)?.getDataURL({
+			pixelRatio: 2,
+			backgroundColor: token("--dd-surface", "#ffffff", el),
+		}),
 };
 
 engines.define("echarts", EChartsEngine);

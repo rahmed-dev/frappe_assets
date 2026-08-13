@@ -130,9 +130,12 @@ In particular these, because they are the ones that get "tidied":
 - KPI delta: `{value, good, unit}` — a reading, not markup
 - Table cell object: `{ value, tone, pill, tag, sort }`; table row: `tone`,
   `drill`; table panel: `caption`, `caption_visible`, `sortable`,
-  `sort: {key, dir}`, `sticky`, `max_height`, `virtual`; table column:
+  `sort: {key, dir}`, `sticky`, `max_height`, `virtual`, `export`; table column:
   `{label, key, numeric, align, width, sortable}`. `sort` on the panel
   **describes** the order the rows arrived in and reorders nothing
+- Export: `export: true` or `export: {filename, label}`, on a `table` (CSV) and
+  on a `chart` (PNG). A CSV holds what the table PRINTS, in the order it is
+  showing, including rows a `virtual` table is not currently drawing
 - Tone names: `success · warning · danger · info · quiet`, plus the `rows`
   panel's directions `rising · easing · steady · quiet`
 - Drill descriptor: `{ doctype, filters, date_field, inherit }` | `{ route }` |
@@ -172,6 +175,10 @@ something. These class names are stable. `{tone}` expands over every name in
 | `.dd-table-caption` | a table's `<caption>` |
 | `.dd-sort` | the button in a sortable header |
 | `.dd-visually-hidden` | present for a screen reader, absent for a sighted one |
+| `.dd-table-panel` | a table plus its toolbar |
+| `.dd-chart-panel` | a chart plus its toolbar |
+| `.dd-tools` | a panel's toolbar — hidden in print |
+| `.dd-export` | the CSV / PNG button |
 | `.dd-bar` | a `bars` row |
 | `.dd-bar-label` | a `bars` row's label |
 | `.dd-state` | a panel standing in for one that has no numbers |

@@ -145,8 +145,13 @@ missing, and it stays on the standing list below for that reason.
 
 ## v0.6.0 — reach
 
-- [ ] Export: CSV from a `table`, PNG from a `chart` via the adapter's
-      `toDataURL`
+- [x] Export: CSV from a `table`, PNG from a `chart` via the adapter's
+      `toDataURL`. The decision worth remembering: the CSV is built from the
+      spec through the current sort order, never scraped out of the DOM — a
+      `virtual` table has most of its rows nowhere near the document, and a file
+      holding the visible forty of five thousand would be worse than no button.
+      The formula guard (`=`, `+`, `-`, `@` get a leading tab) is a security
+      property, not a formatting one, and is pinned by a unit test
 - [x] Table: sort, sticky header, `<caption>` and `scope`, optional
       virtualisation — every key optional, so a table that asks for none of them
       still renders as plain markup with no mount phase at all. The two
@@ -160,8 +165,11 @@ missing, and it stays on the standing list below for that reason.
       schemas belongs with the vocabulary freeze rather than ahead of it
 - [ ] New primitives: stat-with-sparkline, progress/goal bar, category bar,
       delta badge
-- [ ] `@media print` block — a dashboard is printed more often than anyone plans
-      for
+- [x] `@media print` block — §16 of `dash.scss`: the light palette forced on
+      paper, controls hidden, capped tables uncapped, cards kept off page
+      breaks, a long table's header repeated per sheet. The light palette is now
+      a SCSS mixin with two callers rather than two literal copies. A `virtual`
+      table is the acknowledged exception and prints what is on screen
 - [ ] Generated `index.d.ts` from the panel schemas
 - [ ] Dev-mode spec validator, tree-shaken out of a production build
 

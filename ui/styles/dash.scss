@@ -38,8 +38,14 @@
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  * §1 · DESIGN TOKENS (light)
+ *
+ * The colour half is a mixin because it has two callers: `.dd-page` below, and
+ * the print block in §16, which has to undo §15 on a sheet of white paper. Two
+ * literal copies of a palette is how one of them quietly stops matching the
+ * other — the same failure mode the dark block is careful about, and worse here
+ * because nobody looks at a print preview twice.
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-.dd-page {
+@mixin dd-palette-light {
 	/* — Surfaces & lines — */
 	--dd-surface: #ffffff;
 	--dd-surface-alt: #f7f7f8;
@@ -93,6 +99,10 @@
 	--dd-series-3: #8a8a93;
 	--dd-series-4: #b8b8bf;
 	--dd-series-5: #dcdce0;
+}
+
+.dd-page {
+	@include dd-palette-light;
 
 	/* — Spacing (4px scale) — */
 	--dd-space-1: 4px;
@@ -1229,6 +1239,51 @@ body:not(.full-width) .dd-host .container {
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * §13f · EXPORT TOOLS — the CSV / PNG button on a panel
+ *
+ * Quiet until wanted. The button is the least important thing in a card and
+ * competing with the numbers for attention would be exactly backwards, so it
+ * sits at low opacity and comes up on hover, on focus, and whenever the pointer
+ * is anywhere in the panel. It never goes to `opacity: 0` — a control that is
+ * invisible until hovered cannot be found by anyone who does not already know
+ * it is there, and is unreachable by touch entirely.
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.dd-page .dd-tools {
+	display: flex;
+	justify-content: flex-end;
+	margin-bottom: var(--dd-space-2);
+}
+.dd-page .dd-export {
+	appearance: none;
+	border: 1px solid var(--dd-border);
+	background: var(--dd-surface);
+	color: var(--dd-text-muted);
+	font: inherit;
+	font-size: var(--dd-text-xs);
+	letter-spacing: 0.04em;
+	padding: 2px var(--dd-space-2);
+	border-radius: var(--dd-radius-sm);
+	cursor: pointer;
+	opacity: 0.55;
+	transition:
+		opacity var(--dd-ease-fast),
+		color var(--dd-ease-fast),
+		border-color var(--dd-ease-fast);
+}
+.dd-page .dd-table-panel:hover .dd-export,
+.dd-page .dd-chart-panel:hover .dd-export,
+.dd-page .dd-export:hover,
+.dd-page .dd-export:focus-visible {
+	opacity: 1;
+	color: var(--dd-text);
+	border-color: var(--dd-border-strong);
+}
+.dd-page .dd-export:focus-visible {
+	outline: 2px solid var(--dd-accent);
+	outline-offset: 2px;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  * §13d · LOADING / ERROR
  *
  * The skeleton exists so a refresh does not collapse the page to nothing and
@@ -1451,4 +1506,103 @@ body:not(.full-width) .dd-host .container {
 	/* Slate shadows vanish on dark; use black. */
 	--dd-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
 	--dd-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.55);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * §16 · PRINT
+ *
+ * A dashboard is printed and exported to PDF far more often than anyone plans
+ * for — it is how a number gets into a meeting, an audit file or an email to
+ * somebody without a Desk login. Left alone the browser prints the screen, and
+ * the screen is wrong on paper in four specific ways this section fixes.
+ *
+ * 1. THE DARK THEME. A dark dashboard prints as pale ink on white, because the
+ *    background is a background and most printers drop it. The light palette is
+ *    re-included at a specificity that beats §15: `html[data-theme] .dd-page` is
+ *    (0,2,1) against the dark block's (0,2,0). It must come after §15 in the
+ *    file as well — equal specificity would otherwise be decided by order.
+ * 2. CONTROLS. A date field, a preset chip and an export button are all things
+ *    to press. On paper they are furniture that says "this document is
+ *    interactive" to a reader holding a sheet of paper.
+ * 3. SCROLLERS. A capped table prints its first 420px and silently drops the
+ *    rest — the reader gets a table that looks complete and is not. A virtual
+ *    table cannot be fixed this way and is called out below.
+ * 4. PAGE BREAKS. A card split across a break loses whichever half the eye
+ *    needed; `break-inside: avoid` keeps a panel whole.
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@media print {
+	html[data-theme] .dd-page,
+	.dd-page {
+		@include dd-palette-light;
+
+		/* Paper has no elevation. A printed shadow is a grey smear along one edge
+		   of every card, and on a laser printer it is a visible band. */
+		--dd-shadow-xs: none;
+		--dd-shadow-md: none;
+	}
+
+	.dd-page {
+		background: #ffffff;
+		padding: 0;
+	}
+
+	/* The page furniture. The explainer popover is here for a different reason
+	   from the rest: it is positioned over the page, so it prints as a block
+	   floating across whatever card it happened to open above. */
+	.dd-page .dd-presets,
+	.dd-page .dd-tools,
+	.dd-page .dd-info-pop,
+	.dd-page .dd-sort-arrow {
+		display: none !important;
+	}
+
+	/* The sort button keeps its label — it IS the column heading — but stops
+	   looking like something to press. */
+	.dd-page .dd-sort {
+		cursor: default;
+	}
+
+	.dd-page .dd-card {
+		break-inside: avoid;
+		box-shadow: none;
+	}
+
+	.dd-page .dd-section-title {
+		break-after: avoid;
+	}
+
+	/* Let a capped table print all of its rows. This is the one rule here that
+	   changes what the reader can SEE rather than how it looks: a `max-height`
+	   that survives into print turns eight hundred rows into twelve with nothing
+	   on the page to say so.
+
+	   A `virtual` table is the exception and cannot be rescued here — only the
+	   rows in the window exist in the document at all, so it prints what is on
+	   screen. A table meant to be printed in full should not ask for `virtual`,
+	   and one that is genuinely too long to print wants the CSV button instead. */
+	.dd-page .dd-table-scroll {
+		max-height: none !important;
+		overflow: visible !important;
+	}
+	.dd-page .dd-table-sticky thead th {
+		position: static;
+	}
+
+	/* Repeat the header on every sheet of a long table. `thead` does this by
+	   default in a print context, but only when the table is not display-flex or
+	   otherwise re-laid-out, so it is asserted rather than assumed. */
+	.dd-page .dd-table thead {
+		display: table-header-group;
+	}
+	.dd-page .dd-table tr {
+		break-inside: avoid;
+	}
+
+	/* Print the tint, not just the ink. Status colour is the whole content of a
+	   pill and a toned row, and a browser that drops backgrounds prints
+	   `Breached` as an unremarkable word in a grey box. */
+	.dd-page {
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+	}
 }

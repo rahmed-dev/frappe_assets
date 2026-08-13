@@ -73,11 +73,22 @@
  * A virtual table needs its mount phase to show anything at all. That is the
  * trade, and it is why it is opt-in: every other table on this page renders its
  * rows as plain markup and is complete before a line of JavaScript runs.
+ *
+ * ## Export
+ *
+ * `export: true` — or `{filename, label}` — puts a CSV button above the table.
+ * What it writes is what the table PRINTS, in the order it is currently showing:
+ * the same strings, after the reader's sort, including the rows a virtual table
+ * is not currently drawing. That is the promise worth making, because the file
+ * is then something the reader can hold next to the screen and agree with. It
+ * deliberately does not export `cell.sort` — the number behind `Breached` is
+ * this panel's private business and means nothing in a spreadsheet.
  */
 
 import * as fmt from "../../ui/format.js";
 import { tone as tone_of } from "../../ui/tone.js";
 import { host } from "../../core/host.js";
+import { to_csv, save_csv, stamp, tools_html } from "../../ui/export.js";
 
 export const name = "table";
 
@@ -226,9 +237,22 @@ function head_html(node, col, index) {
 	</th>`;
 }
 
+/** `export: true` and `export: {filename, label}` are the same thing. */
+function export_options(node) {
+	if (!node.export) {
+		return null;
+	}
+	const given = node.export === true ? {} : node.export;
+	return {
+		filename: given.filename || node.caption || name,
+		label: given.label || host(name).t("CSV"),
+	};
+}
+
 export function render(node, pass) {
 	const sortable = node.columns.some((col) => is_sortable(node, col));
 	const virtual = Boolean(node.virtual);
+	const exporting = export_options(node);
 	const height = Number(node.max_height) || (node.sticky || virtual ? DEFAULT_MAX_HEIGHT : 0);
 	const sticky = Boolean(node.sticky) && height > 0;
 
@@ -264,8 +288,8 @@ export function render(node, pass) {
 	// A plain table stays exactly what it was: markup, complete on arrival, with
 	// no element the mount phase will even look at.
 	const slot =
-		sortable || virtual
-			? ` data-dd-mount="${pass.defer(name, { node, rows, virtual, sortable })}"`
+		sortable || virtual || exporting
+			? ` data-dd-mount="${pass.defer(name, { node, rows, virtual, sortable, exporting })}"`
 			: "";
 
 	// A virtual table ships an empty body on purpose. Rendering all ten thousand
@@ -274,9 +298,20 @@ export function render(node, pass) {
 
 	const table = `<table class="${classes}"${slot}>${caption}${widths}<thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
 
-	return height
+	const scrolled = height
 		? `<div class="dd-table-scroll" style="max-height:${Number(height)}px">${table}</div>`
 		: table;
+
+	if (!exporting) {
+		return scrolled;
+	}
+	// The toolbar sits OUTSIDE the scroller. Inside it, the button scrolls away
+	// with the rows on the one kind of table most likely to be exported.
+	const tools = tools_html(
+		exporting.label,
+		host(name).t("Download {0} as CSV", [node.caption || host(name).t("this table")]),
+	);
+	return `<div class="dd-table-panel">${tools}${scrolled}</div>`;
 }
 
 /**
@@ -398,6 +433,28 @@ export function mount(el, data) {
 	// teardown while the element is still attached, so removal is enough.
 	el.addEventListener("click", on_click);
 
+	/**
+	 * The table as CSV, in the order it is showing.
+	 *
+	 * Built from `node.rows` through `order` rather than from the markup in the
+	 * DOM: a virtual table has most of its rows nowhere near the document, and a
+	 * file that silently held only the visible forty of five thousand would be
+	 * worse than no button at all.
+	 */
+	const to_grid = () => [
+		node.columns.map((col) => col.label),
+		...order.map((index) => node.columns.map((col) => cell_of(node.rows[index], col).value)),
+	];
+
+	const panel = el.closest(".dd-table-panel");
+	const button = panel ? panel.querySelector(".dd-export") : null;
+	const on_export = () => {
+		save_csv(to_csv(to_grid()), stamp(data.exporting.filename, "csv"));
+	};
+	if (button && data.exporting) {
+		button.addEventListener("click", on_export);
+	}
+
 	let ticking = false;
 	const on_scroll = () => {
 		if (ticking) {
@@ -424,6 +481,9 @@ export function mount(el, data) {
 		el.removeEventListener("click", on_click);
 		if (data.virtual && scroller) {
 			scroller.removeEventListener("scroll", on_scroll);
+		}
+		if (button && data.exporting) {
+			button.removeEventListener("click", on_export);
 		}
 	};
 }

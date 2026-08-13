@@ -431,7 +431,7 @@ const showcase = (title, hint, key, height) => ({
 	type: "card",
 	title,
 	hint,
-	body: { type: "chart", option: CHARTS[key], height: height || 260 },
+	body: { type: "chart", option: CHARTS[key], height: height || 260, export: true },
 });
 
 /* ───────────────────────────────────────────────────── a panel of our own ── */
@@ -629,6 +629,9 @@ const SPEC = {
 						// to everybody else.
 						caption: "Edge nodes by response time",
 						sortable: true,
+						// The CSV holds what the table PRINTS, in the order it is
+						// currently showing — sort it first and the file follows.
+						export: true,
 						// Describes the order the rows ARRIVED in. It sorts nothing —
 						// the backend already did that — it marks the header, so the
 						// first click on Response reverses the order instead of
@@ -676,6 +679,10 @@ const SPEC = {
 				sticky: true,
 				virtual: true,
 				max_height: 320,
+				// Exporting a virtual table is the case that proves the file is built
+				// from the spec rather than scraped off the page: all 5,000 rows land
+				// in it, and about forty of them are in the DOM.
+				export: { filename: "sensor readings" },
 				// A virtual table swaps its rows out as it scrolls, so the columns are
 				// given widths — an auto layout would re-measure them on every tick and
 				// the table would shiver.

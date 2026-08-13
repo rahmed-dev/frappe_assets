@@ -156,3 +156,94 @@ describe("virtual", () => {
 		expect(el.querySelector("tbody").innerHTML).toBe("");
 	});
 });
+
+/**
+ * The CSV button.
+ *
+ * The file is built from the spec through the current order, not scraped out of
+ * the DOM — which is the only way a virtual table can export the 460 rows that
+ * are not currently in the document. A file that silently held the visible forty
+ * would be worse than no button at all, so that is what the last case pins.
+ */
+describe("export", () => {
+	let saved;
+	let clicked;
+	let filename;
+
+	beforeEach(() => {
+		saved = null;
+		clicked = 0;
+		filename = null;
+		URL.createObjectURL = (blob) => {
+			saved = blob;
+			return "blob:test";
+		};
+		URL.revokeObjectURL = () => {};
+		// The anchor is stubbed rather than let fly: a real `click()` on a download
+		// link asks the environment to save a file, which happy-dom answers with a
+		// navigation warning that has nothing to do with what is being tested.
+		HTMLAnchorElement.prototype.click = function () {
+			clicked += 1;
+			filename = this.download;
+		};
+	});
+
+	const text = async () => (await saved.text()).replace(/^\uFEFF/, "");
+
+	const press = (el) => {
+		const button = el.closest(".dd-table-panel").querySelector(".dd-export");
+		button.click();
+		return button;
+	};
+
+	it("writes the header and every row", async () => {
+		const { el } = draw({ export: true, columns: COLUMNS, rows: ROWS });
+		press(el);
+		expect(clicked).toBe(1);
+		expect(await text()).toBe(
+			"Node,Response\r\nedge-01,88 ms\r\nedge-02,—\r\nedge-03,42 ms\r\nedge-04,210 ms",
+		);
+	});
+
+	it("follows the order the reader sorted into", async () => {
+		const { el } = draw({ export: true, sortable: true, columns: COLUMNS, rows: ROWS });
+		el.querySelectorAll(".dd-sort")[1].click();
+		press(el);
+		const rows = (await text()).split("\r\n").slice(1);
+		expect(rows[0]).toBe("edge-03,42 ms");
+		expect(rows[3]).toBe("edge-02,—");
+	});
+
+	it("exports the value, never the private sort key", async () => {
+		const { el } = draw({
+			export: true,
+			columns: COLUMNS,
+			rows: [{ node: "edge-01", response: { value: "Breached", sort: 2 } }],
+		});
+		press(el);
+		expect(await text()).toContain("Breached");
+		expect(await text()).not.toContain(",2");
+	});
+
+	it("names the file after the caption and the day it was taken", () => {
+		const { el } = draw({ export: true, caption: "Edge nodes", columns: COLUMNS, rows: ROWS });
+		press(el);
+		expect(filename).toBe("edge-nodes-2026-01-15.csv");
+		// The anchor exists only for the length of the click.
+		expect(document.querySelector("a")).toBe(null);
+	});
+
+	it("exports rows a virtual table is not currently drawing", async () => {
+		const many = Array.from({ length: 500 }, (_, i) => ({ node: `edge-${i}`, response: `${i} ms` }));
+		const { el } = draw({ export: true, virtual: true, max_height: 200, columns: COLUMNS, rows: many });
+		press(el);
+		expect((await text()).split("\r\n")).toHaveLength(501);
+	});
+
+	it("releases the button on teardown", () => {
+		const { el, teardown } = draw({ export: true, columns: COLUMNS, rows: ROWS });
+		teardown();
+		press(el);
+		expect(clicked).toBe(0);
+	});
+});

@@ -118,7 +118,10 @@ tokens. This is not stylistic preference — three of Frappe's tokens are traps:
   it becomes invisible.
 
 Anything added to `dash.scss` follows the same discipline: a new colour is a new
-token in §1 **and** a re-tuned value in the dark block. The dark block wins by
+token in §1 **and** a re-tuned value in the dark block. §1's colour half is a
+SCSS mixin, `dd-palette-light`, with two callers — `.dd-page` and the print
+block in §16, which has to undo the dark theme on a sheet of white paper. Add
+the token inside the mixin, not beside it, or it will not reach print. The dark block wins by
 specificity — `(0,2,0)` beats `(0,1,0)` — so it is purely additive and never
 needs `!important`.
 

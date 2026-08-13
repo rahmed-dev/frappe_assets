@@ -191,7 +191,8 @@ headline of the page. `tone` tints a value that is itself a finding.
   rows: [{ …, tone, drill }],
   caption, caption_visible,            // the table's own name, hidden by default
   sortable, sort: { key, dir },        // see "Sorting"
-  sticky, max_height, virtual }        // see "Long tables"
+  sticky, max_height, virtual,         // see "Long tables"
+  export }                             // a CSV button — see "Export"
 ```
 A cell is either a plain value or `{ value, tone, pill, tag, sort }`. `tone` shifts the
 ink, for a cell whose value **is** the finding — a reading out of range, a field
@@ -240,9 +241,20 @@ ten thousand `<tr>` elements. It implies a scroller and a fixed layout, wants
 one table that needs JavaScript to show anything — every other one is complete
 markup before a line of it runs.
 
+*Export.* `export: true` — or `{filename, label}` — puts a CSV button above the
+table. The file holds what the table **prints**, in the order it is currently
+showing: the reader's sort, and every row, including the ones a `virtual` table
+is not currently drawing. It never exports `cell.sort`; the number behind
+`Breached` is the panel's private business and means nothing in a spreadsheet.
+
+A value that starts `=`, `+`, `-` or `@` is prefixed with a tab, because a
+spreadsheet runs those as formulas. `=HYPERLINK("http://…"&A1)` in a cell is the
+row next to it, mailed away by a program the reader trusts.
+
 **`chart`** — an ECharts option, passed through untouched.
 ```js
-{ type: "chart", height: 240, option: <object | (palette) => object>, drill }
+{ type: "chart", height: 240, option: <object | (palette) => object>, drill,
+  export }                             // a PNG button, if the engine can
 ```
 The toolkit supplies the theme, the tooltip, the resize observer, and re-themes
 the canvas when the Desk theme flips. Pass a **function** when a series needs a
@@ -253,6 +265,11 @@ receives the clicked datum.
 your app's bundle file is what registers it; without it this panel throws
 `NoChartEngineError` naming that line. A dashboard that draws no charts adds
 nothing and carries no engine — 30 KB of bundle instead of 727 KB, measured.
+
+`export` draws a PNG button when the registered engine implements the optional
+`toDataURL`. The picture is taken at twice the screen resolution and on the
+surface colour of the theme it was taken from — a transparent PNG of a dark
+chart is an empty rectangle in every viewer that puts white behind it.
 
 Registered series types: **line, bar, pie, scatter, funnel, sankey, treemap,
 sunburst, heatmap, gauge, radar** — plus the grid, legend, tooltip, dataZoom,
@@ -436,3 +453,17 @@ Frappe's semantic tokens carry three traps this deliberately avoids.
 
 Page-local CSS goes in the page's own stylesheet, scoped under `page_class`. If a
 rule would read sensibly on another dashboard, it belongs in `dash.scss` instead.
+
+## Printing
+
+A dashboard prints from Ctrl-P with no work from the page. §16 of `dash.scss`
+forces the light palette on paper — a dark theme prints as pale ink, because
+most printers drop the background it was designed against — hides the controls,
+uncaps `max_height` so a capped table prints all of its rows rather than its
+first 420px, keeps a card from splitting across a page break, and repeats the
+header of a long table on each sheet. Tints and pills are printed, not dropped:
+the colour of a pill is its content.
+
+One panel cannot be rescued there. A `virtual` table has only its visible rows
+in the document, so it prints what is on screen. A table meant to be printed in
+full should not ask for `virtual`; one too long to print wants `export`.
