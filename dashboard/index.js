@@ -10,8 +10,12 @@
  * from an app's SCSS bundle — because CSS and JS take different paths through
  * the build and a page can legitimately want the design system without the
  * renderer.
+ *
+ * What this file exports is the contract — see CONTRACT.md. A module reached by
+ * path instead is internal and may be renamed in a patch release.
  */
 
+export { VERSION } from "./version.js";
 export { Dashboard } from "./controller.js";
 export { render } from "./render.js";
 export { chart, sparkline, palette, token, colour, markers, bounds } from "./charts.js";

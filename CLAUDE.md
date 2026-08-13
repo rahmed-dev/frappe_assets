@@ -2,6 +2,14 @@
 
 The Desk dashboard toolkit for Frappe/ERPNext apps. One thing, two directories.
 
+**Before changing anything under `dashboard/`, read [`CONTRACT.md`](CONTRACT.md)**
+— it says which exports, spec keys, `dd-` class names and `--dd-*` tokens a
+consuming page is allowed to depend on, and therefore which of them cannot be
+renamed without a version bump and a migration note. Two of those three channels
+have no build-time check: a renamed CSS class fails **silently**, and the page is
+simply wrong until someone opens it. [`CONTRIBUTING.md`](CONTRIBUTING.md) is the
+process — how to add a panel, when a fix is not a patch, how to cut a release.
+
 | Directory | What it is | Consumed how |
 |---|---|---|
 | `dashboard/` | The toolkit — a design system plus a spec renderer | `yarn add` this repo, then import |

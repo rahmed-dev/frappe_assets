@@ -16,9 +16,13 @@ them in `node_modules`.
 
 ## Install
 
+Depend on a **tag**, never on a branch: `#main` means the next `yarn install`
+silently takes whatever was pushed most recently, and there is then no way to ask
+for the version a working page was built against.
+
 ```bash
 cd apps/<your_app>
-yarn add rahmed-dev/frappe_assets echarts
+yarn add rahmed-dev/frappe_assets#v0.2.0 echarts
 ```
 
 ```js
@@ -31,6 +35,12 @@ export * from "frappe-assets/dashboard";
 @use "~frappe-assets/dashboard/dash.scss";
 ```
 
-See [`dashboard/README.md`](dashboard/README.md) for the spec reference and
-[`CLAUDE.md`](CLAUDE.md) for the design rules and the Desk gotchas the toolkit
-works around.
+## The rest of the documentation
+
+| | |
+|---|---|
+| [`dashboard/README.md`](dashboard/README.md) | the spec reference — every panel and every key |
+| [`CONTRACT.md`](CONTRACT.md) | what a consuming app may depend on, and what the version numbers mean |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | how the library is written, how to change it, how to release, how an app upgrades |
+| [`CHANGELOG.md`](CHANGELOG.md) | what each version did, and what it asks of consumers |
+| [`CLAUDE.md`](CLAUDE.md) | the design rules and the Desk/ECharts traps the toolkit works around |

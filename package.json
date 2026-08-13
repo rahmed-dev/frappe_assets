@@ -1,7 +1,7 @@
 {
 	"name": "frappe-assets",
-	"version": "0.1.0",
-	"description": "Shared front-end toolkit and snippets for Frappe apps",
+	"version": "0.2.0",
+	"description": "Desk dashboard toolkit for Frappe apps",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
@@ -12,9 +12,10 @@
 	"sideEffects": [
 		"demo/**"
 	],
+	"//exports": "Two entries and no wildcard, on purpose. `CONTRACT.md` promises the index exports and the stylesheet; a deep import of any other module is not supported, and listing `./dashboard/*` would turn every internal file into an accidental contract that nothing then dares rename. The SCSS is reachable by path because an app's stylesheet imports it as `~frappe-assets/dashboard/dash.scss` through sass includePaths, which does not consult this field — the entry is here so a bundler that does consult it agrees.",
 	"exports": {
 		"./dashboard": "./dashboard/index.js",
-		"./dashboard/*": "./dashboard/*",
+		"./dashboard/dash.scss": "./dashboard/dash.scss",
 		"./package.json": "./package.json"
 	},
 	"files": [

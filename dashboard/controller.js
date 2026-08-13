@@ -19,6 +19,7 @@
 import { render } from "./render.js";
 import { bind as bind_drills, follow } from "./drill.js";
 import { chart, sparkline, token } from "./charts.js";
+import { VERSION } from "./version.js";
 
 const DEFAULT_PRESETS = [7, 30, 90];
 const DEFAULT_RANGE_DAYS = 30;
@@ -53,6 +54,12 @@ export class Dashboard {
 		// Capping only our own element would centre the dashboard and leave its own
 		// controls against the left edge.
 		page.wrapper.addClass("dd-host");
+
+		// A site builds this toolkit from source, out of whatever was in
+		// `node_modules` at build time, and records the version nowhere. Stamping it
+		// makes "which toolkit is this page running" answerable by inspecting the
+		// element, without bench access.
+		page.wrapper.attr("data-dd-version", VERSION);
 
 		if (options.dated !== false) {
 			this.setup_dates();
