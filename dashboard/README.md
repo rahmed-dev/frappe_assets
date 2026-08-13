@@ -187,10 +187,13 @@ headline of the page. `tone` tints a value that is itself a finding.
 **`table`**
 ```js
 { type: "table",
-  columns: [{ label, key, numeric, align: "right"|"center" }],
-  rows: [{ …, tone, drill }] }
+  columns: [{ label, key, numeric, align: "right"|"center", width, sortable }],
+  rows: [{ …, tone, drill }],
+  caption, caption_visible,            // the table's own name, hidden by default
+  sortable, sort: { key, dir },        // see "Sorting"
+  sticky, max_height, virtual }        // see "Long tables"
 ```
-A cell is either a plain value or `{ value, tone, pill, tag }`. `tone` shifts the
+A cell is either a plain value or `{ value, tone, pill, tag, sort }`. `tone` shifts the
 ink, for a cell whose value **is** the finding — a reading out of range, a field
 two systems disagree about. `pill: true` renders it as a pill instead, for a cell
 holding a *state* rather than a measurement. `tag` prints a short quiet word
@@ -206,6 +209,36 @@ All of it is optional and a bare value behaves as it always has. Reach for these
 rather than rebuilding the table as `{type: "html"}`: every cell here goes
 through `fmt.esc`, and neither colour nor a tag is worth hand-rolling your own
 escaping for.
+
+Every header cell carries `scope="col"`, and `caption` is the table's own name
+for a screen reader. The caption is hidden unless `caption_visible: true`,
+because a table here is nearly always inside a `card` whose title already says
+it.
+
+*Sorting.* `sortable: true` makes every column sortable and a single column opts
+out with `sortable: false`. `sort: {key, dir}` **describes** the order the rows
+arrived in — it reorders nothing, because the backend already ordered them.
+What it does is mark the header, so the reader can see where the order came from
+and the first click on that column reverses it rather than re-applying it.
+
+A cell prints a string, so the sort key is: `cell.sort` if you gave one, the
+value if it is already a number, the first number inside the string on a
+`numeric` column (`"1,126"`, `"210 ms"`), the string otherwise. Anything whose
+order is not its printed order — a date printed `01-07-2026`, a duration, a
+severity word — wants an explicit `sort`. Blanks sort last in both directions:
+a missing reading is not the smallest reading.
+
+*Long tables.* `max_height` (pixels) puts the table in its own scroller and
+`sticky: true` pins the header inside it. Sticky needs that scroller, so it takes
+a default height rather than quietly doing nothing.
+
+`virtual: true` keeps only the visible rows in the DOM. The markup for every row
+is still built once, in `render`, which is what keeps the escaping and the drill
+descriptors identical to any other table; what it avoids is the layout cost of
+ten thousand `<tr>` elements. It implies a scroller and a fixed layout, wants
+`width` on each column, and assumes every row is the same height. It is also the
+one table that needs JavaScript to show anything — every other one is complete
+markup before a line of it runs.
 
 **`chart`** — an ECharts option, passed through untouched.
 ```js

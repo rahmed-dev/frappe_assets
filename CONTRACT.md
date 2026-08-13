@@ -128,7 +128,11 @@ In particular these, because they are the ones that get "tidied":
 - Panel types: `kpis · fields · card · bars · rows · table · chart · text ·
   section · split · grid · html`
 - KPI delta: `{value, good, unit}` — a reading, not markup
-- Table cell object: `{ value, tone, pill, tag }`; table row: `tone`, `drill`
+- Table cell object: `{ value, tone, pill, tag, sort }`; table row: `tone`,
+  `drill`; table panel: `caption`, `caption_visible`, `sortable`,
+  `sort: {key, dir}`, `sticky`, `max_height`, `virtual`; table column:
+  `{label, key, numeric, align, width, sortable}`. `sort` on the panel
+  **describes** the order the rows arrived in and reorders nothing
 - Tone names: `success · warning · danger · info · quiet`, plus the `rows`
   panel's directions `rising · easing · steady · quiet`
 - Drill descriptor: `{ doctype, filters, date_field, inherit }` | `{ route }` |
@@ -162,6 +166,12 @@ something. These class names are stable. `{tone}` expands over every name in
 | `.dd-pill` | a pill |
 | `.dd-pill-{tone}` | a toned pill |
 | `.dd-tag` | a cell tag |
+| `.dd-table-scroll` | the scroller a capped or sticky table lives in |
+| `.dd-table-sticky` | a table whose header is pinned |
+| `.dd-table-virtual` | a table holding only its visible rows |
+| `.dd-table-caption` | a table's `<caption>` |
+| `.dd-sort` | the button in a sortable header |
+| `.dd-visually-hidden` | present for a screen reader, absent for a sighted one |
 | `.dd-bar` | a `bars` row |
 | `.dd-bar-label` | a `bars` row's label |
 | `.dd-state` | a panel standing in for one that has no numbers |

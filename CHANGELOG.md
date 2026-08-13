@@ -8,6 +8,52 @@ Every release carries a **Consumer action** line. `None` means: bump the tag,
 
 ---
 
+## Unreleased — v0.6.0
+
+Work in progress. Nothing here is tagged, and the version files still read
+`0.5.1` — they move when the release is cut, in one commit, as
+[`CONTRIBUTING.md`](CONTRIBUTING.md) §4 requires.
+
+**The `table` panel stops being a short table.** A table with three hundred rows
+in it had two answers on this toolkit, and both were wrong: leave it whole and
+the reader scrolls past the header and forgets which column is which, or rebuild
+it as `{type: "html"}` and hand-roll the escaping for values that came out of a
+database. It now sorts, pins its header, names itself for a screen reader, and
+holds only the rows on screen.
+
+- **`sortable: true`** on the table, or per column. A sortable heading is a real
+  `<button>` inside its `<th>`, so keyboard activation and focus arrive without
+  this panel implementing either, and `aria-sort` moves with the order.
+- **`sort: {key, dir}`** describes the order the rows *arrived* in and reorders
+  nothing. Re-sorting in the browser what the backend already sorted is only a
+  chance to disagree with it. What it buys is a marked header, and a first click
+  that reverses the order rather than re-applying it.
+- **`sort` on a cell** for a column whose order is not its printed order. A cell
+  prints a string by design — `fmt` runs before the spec is built — so a
+  severity word sorted alphabetically puts `Breached` first and `Slow` last.
+  Numbers inside a `numeric` column's strings (`"1,126"`, `"210 ms"`) are read
+  for you. Blanks sort last in **both** directions: a missing reading is not the
+  smallest reading, and an ascending column that opens with nine em dashes has
+  buried the answer somebody clicked for.
+- **`caption`** and `scope="col"` on every header. Without `scope` a screen
+  reader announces the body as a list of values with no heading attached to any
+  of them. The caption is hidden unless `caption_visible: true`, because the
+  card around the table nearly always says it already.
+- **`sticky: true` and `max_height`** — the table gets its own scroller and the
+  header pins inside it. Pinning against the page scroll instead would mean
+  knowing the height of the Desk navbar, which belongs to frappe and moves.
+- **`virtual: true`** keeps only the visible rows in the DOM. The markup for
+  every row is still built once, in `render`, so escaping and drill descriptors
+  are identical to any other table; what is avoided is the layout and paint cost
+  of ten thousand `<tr>` elements, which is the cost that shows up as a Desk
+  that will not scroll. The gallery carries a 5,000-row example.
+
+**Consumer action: none.** Every key is optional and a table that declares none
+of them renders exactly the markup it did before, with no mount phase and no
+JavaScript involved.
+
+---
+
 ## v0.5.1 — 2026-08-13
 
 **Every chart was broken in v0.5.0.** `engine()` returned the chart-engine

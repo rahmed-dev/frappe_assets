@@ -192,6 +192,98 @@ describe("table", () => {
 		});
 		expect(html).toContain("dd-num");
 	});
+
+	it("scopes every header cell, sortable or not", () => {
+		// Without `scope`, a screen reader announces the body as a list of values
+		// with no heading attached to any of them.
+		const html = one({
+			type: "table",
+			columns: [{ label: "Name", key: "name" }],
+			rows: [{ name: "Alpha" }],
+		});
+		expect(html).toContain('<th scope="col"');
+	});
+
+	it("hides the caption unless the caller asks for it, and escapes it", () => {
+		const hidden = one({
+			type: "table",
+			caption: XSS,
+			columns: [{ label: "A", key: "a" }],
+			rows: [],
+		});
+		expect(hidden).toContain("dd-visually-hidden");
+		expect(hidden).not.toContain("<img");
+
+		const shown = one({
+			type: "table",
+			caption: "Nodes",
+			caption_visible: true,
+			columns: [{ label: "A", key: "a" }],
+			rows: [],
+		});
+		expect(shown).toContain("dd-table-caption");
+		expect(shown).not.toContain("dd-visually-hidden");
+	});
+
+	it("claims no mount slot when there is nothing to mount", () => {
+		// A plain table is complete markup and stays that way. An element with no
+		// `data-dd-mount` is one the mount phase never looks at.
+		const html = one({
+			type: "table",
+			columns: [{ label: "A", key: "a" }],
+			rows: [{ a: "x" }],
+		});
+		expect(html).not.toContain("data-dd-mount");
+	});
+
+	it("makes a sortable header a real button and marks the arriving order", () => {
+		const html = one({
+			type: "table",
+			sortable: true,
+			sort: { key: "n", dir: "desc" },
+			columns: [{ label: "N", key: "n", numeric: true }],
+			rows: [{ n: "2" }],
+		});
+		expect(html).toContain("data-dd-mount");
+		expect(html).toContain('<button type="button" class="dd-sort"');
+		expect(html).toContain('aria-sort="descending"');
+	});
+
+	it("lets one column opt out of a sortable table", () => {
+		const html = one({
+			type: "table",
+			sortable: true,
+			columns: [{ label: "A", key: "a" }, { label: "B", key: "b", sortable: false }],
+			rows: [{ a: "x", b: "y" }],
+		});
+		expect(html.match(/class="dd-sort"/g)).toHaveLength(1);
+	});
+
+	it("puts a sticky or capped table in its own scroller", () => {
+		const html = one({
+			type: "table",
+			sticky: true,
+			max_height: 200,
+			columns: [{ label: "A", key: "a" }],
+			rows: [],
+		});
+		expect(html).toContain('class="dd-table-scroll" style="max-height:200px"');
+		expect(html).toContain("dd-table-sticky");
+	});
+
+	it("ships a virtual table with an empty body — filling it is the mount's job", () => {
+		// Rendering all the rows and then hiding them would pay the entire cost
+		// virtualisation exists to avoid.
+		const html = one({
+			type: "table",
+			virtual: true,
+			columns: [{ label: "A", key: "a" }],
+			rows: [{ a: "one" }, { a: "two" }],
+		});
+		expect(html).toContain("dd-table-virtual");
+		expect(html).toContain("<tbody></tbody>");
+		expect(html).not.toContain(">one<");
+	});
 });
 
 describe("chart", () => {

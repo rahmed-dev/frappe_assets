@@ -147,8 +147,17 @@ missing, and it stays on the standing list below for that reason.
 
 - [ ] Export: CSV from a `table`, PNG from a `chart` via the adapter's
       `toDataURL`
-- [ ] Table: sort, sticky header, `<caption>` and `scope`, optional
-      virtualisation
+- [x] Table: sort, sticky header, `<caption>` and `scope`, optional
+      virtualisation — every key optional, so a table that asks for none of them
+      still renders as plain markup with no mount phase at all. The two
+      decisions worth remembering: `sort` on the panel *describes* the order the
+      rows arrived in rather than performing it, and a sort moves the row
+      markup `render` already produced rather than rebuilding it — a second
+      row-building path would be a second place for the escaping to go wrong,
+      silently
+- [ ] The `index.d.ts` and the validator below are still **deferred to 1.0**:
+      both hang off a panel `schema` that no panel has yet, and writing twelve
+      schemas belongs with the vocabulary freeze rather than ahead of it
 - [ ] New primitives: stat-with-sparkline, progress/goal bar, category bar,
       delta badge
 - [ ] `@media print` block — a dashboard is printed more often than anyone plans

@@ -751,6 +751,119 @@ body:not(.full-width) .dd-host .container {
 	border-bottom: 1px solid var(--dd-border-subtle);
 	color: var(--dd-text);
 }
+
+/* A caption is the table's own name for a screen reader. Hidden unless asked
+   for, because a table here is nearly always inside a `card` whose title
+   already says it, and printing it twice is noise for the sighted reader and
+   nothing at all for anybody else.
+   `clip-path` and not `display: none` — the second removes the element from the
+   accessibility tree too, which would make the whole thing pointless. */
+.dd-page .dd-visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+	border: 0;
+}
+.dd-page .dd-table-caption {
+	caption-side: top;
+	text-align: left;
+	padding-bottom: var(--dd-space-2);
+	font-size: var(--dd-text-xs);
+	color: var(--dd-text-muted);
+}
+
+/* The scroller a `max_height` table lives in, and the only thing a sticky
+   header can pin against. Pinning against the page scroll instead would mean
+   knowing the height of the Desk navbar, which belongs to frappe and moves. */
+.dd-page .dd-table-scroll {
+	overflow: auto;
+	/* Without this the header pins and the rows scroll UNDER the rounded corner
+	   of the card, which reads as a rendering fault rather than as a scroller. */
+	border-radius: inherit;
+}
+.dd-page .dd-table-sticky thead th {
+	position: sticky;
+	top: 0;
+	/* Above the cells, which are in the same stacking context and would otherwise
+	   paint over a header that has no background of its own in some themes. The
+	   header's `background` is set in the rule above, and both are needed: the
+	   z-index without the background gives a transparent header with rows sliding
+	   through it. */
+	z-index: 1;
+}
+/* A fixed layout is what stops the columns re-measuring themselves on every
+   scroll tick as the rows underneath are swapped out. Only virtual tables pay
+   for it — a normal table's auto layout is better at sizing a column to its
+   contents, which is the whole reason it is the default. */
+.dd-page .dd-table-virtual {
+	table-layout: fixed;
+}
+.dd-page .dd-table-virtual tbody td {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* A sortable heading is a real button, so it arrives with the OS's own chrome
+   and has to be stripped back to looking like the `th` it sits in. It inherits
+   font and colour rather than restating them, so the header keeps one look
+   whether or not its column can be sorted. */
+.dd-page .dd-table thead th.dd-th-sort {
+	padding: 0;
+}
+.dd-page .dd-sort {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--dd-space-1);
+	width: 100%;
+	appearance: none;
+	background: none;
+	border: 0;
+	cursor: pointer;
+	font: inherit;
+	color: inherit;
+	letter-spacing: inherit;
+	text-transform: inherit;
+	text-align: inherit;
+	padding: var(--dd-space-2) var(--dd-space-3);
+}
+.dd-page .dd-table thead th.dd-num .dd-sort {
+	justify-content: flex-end;
+}
+.dd-page .dd-table thead th.dd-mid .dd-sort {
+	justify-content: center;
+}
+.dd-page .dd-sort:hover {
+	color: var(--dd-text);
+}
+.dd-page .dd-sort:focus-visible {
+	outline: 2px solid var(--dd-accent);
+	outline-offset: -2px;
+}
+/* The arrow holds its width even when nothing is sorted, so clicking a header
+   does not shove the label of every other column sideways. */
+.dd-page .dd-sort-arrow {
+	width: 0.6em;
+	flex: none;
+	opacity: 0;
+}
+.dd-page .dd-sort-arrow::before {
+	content: "\2191";
+}
+.dd-page [aria-sort] .dd-sort-arrow {
+	opacity: 1;
+}
+.dd-page [aria-sort="descending"] .dd-sort-arrow::before {
+	content: "\2193";
+}
+.dd-page [aria-sort] .dd-sort {
+	color: var(--dd-text);
+}
 .dd-page .dd-table tbody tr:last-child td {
 	border-bottom: 0;
 }

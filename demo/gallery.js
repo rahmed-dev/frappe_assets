@@ -74,6 +74,20 @@ const grade = (ms) => (ms >= 200 ? "danger" : ms >= 100 ? "warning" : "success")
 /* The word for each tone. A pill says the state, the tone colours it — the two
    have to agree, and reading them off one grade is how they stay agreeing. */
 const STATE = { success: "Healthy", warning: "Slow", danger: "Breached" };
+/* How bad each state is, for sorting. The words do not carry this — alphabetical
+   order puts "Breached" first and "Slow" last — so the cell says it explicitly. */
+const SEVERITY = { success: 0, warning: 1, danger: 2 };
+
+/* A table long enough that keeping every row in the DOM is the thing that costs.
+   Seven rows prove the markup; five thousand are what prove `virtual: true`. */
+const READINGS = Array.from({ length: 5000 }, (_, i) => {
+	const ms = 30 + ((i * 37) % 220);
+	return {
+		sensor: `sensor-${String(i + 1).padStart(4, "0")}`,
+		reading: { value: `${ms} ms`, tone: grade(ms) },
+		site: ["Rotterdam", "Antwerp", "Hamburg", "Felixstowe"][i % 4],
+	};
+});
 
 /* ────────────────────────────────────────────────────────── chart options ── */
 
@@ -610,6 +624,16 @@ const SPEC = {
 					hint: "a tone on the cell that carries the finding, a tint on the rows that are a set",
 					body: {
 						type: "table",
+						// The caption is the table's own name for a screen reader, and it
+						// is hidden because the card title above already says it out loud
+						// to everybody else.
+						caption: "Edge nodes by response time",
+						sortable: true,
+						// Describes the order the rows ARRIVED in. It sorts nothing —
+						// the backend already did that — it marks the header, so the
+						// first click on Response reverses the order instead of
+						// re-applying it.
+						sort: { key: "response", dir: "asc" },
 						columns: [
 							{ label: "Node", key: "node" },
 							{ label: "Response", key: "response", numeric: true },
@@ -626,11 +650,42 @@ const SPEC = {
 							// A tone tints the reading; a pill is for a cell holding a
 							// state rather than a measurement. All of it keeps its escaping.
 							response: { value: `${LATENCY[i]} ms`, tone: grade(LATENCY[i]) },
-							state: { value: STATE[grade(LATENCY[i])], tone: grade(LATENCY[i]), pill: true },
+							// `sort` is what a column whose order is not its alphabet needs.
+							// Sorted on the printed word, "Breached" leads and "Slow"
+							// trails, which is the reverse of what the reader clicked for.
+							state: {
+								value: STATE[grade(LATENCY[i])],
+								tone: grade(LATENCY[i]),
+								pill: true,
+								sort: SEVERITY[grade(LATENCY[i])],
+							},
 						})),
 					},
 				},
 			],
+		},
+
+		{
+			type: "card",
+			title: "Sensor readings",
+			hint: "5,000 rows, a pinned header, and only the visible ones in the DOM",
+			body: {
+				type: "table",
+				caption: "Every sensor reading in the window",
+				sortable: true,
+				sticky: true,
+				virtual: true,
+				max_height: 320,
+				// A virtual table swaps its rows out as it scrolls, so the columns are
+				// given widths — an auto layout would re-measure them on every tick and
+				// the table would shiver.
+				columns: [
+					{ label: "Sensor", key: "sensor", width: "40%" },
+					{ label: "Reading", key: "reading", numeric: true, width: "30%" },
+					{ label: "Site", key: "site", width: "30%" },
+				],
+				rows: READINGS,
+			},
 		},
 
 		{ type: "section", title: "Cartesian" },
