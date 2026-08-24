@@ -88,6 +88,30 @@ in the document, so it prints what is on screen. That is called out in
 of them renders exactly the markup it did before, with no mount phase and no
 JavaScript involved. Printing changes nothing on screen.
 
+**A `frappe.ui.Dialog` can run as a wizard.** Two unrelated dialogs in a
+consuming app had each hand-rolled the same step/progress-bar/Next-Back
+control before one was extracted for the other to reuse — that extraction is
+now the package's, so a third app does not do it a third time.
+
+- **`run_wizard(dialog, steps, fields, opts)`** on the barrel. `steps` is
+  `[{title, sections: [sectionFieldname, ...]}, ...]`; the section→fields map
+  is derived from the field list itself, never restated, so moving a field
+  between sections cannot desync the step gate from what is on screen.
+  `opts.nextIndex(index, values)` lets a step branch (Back is a visited-step
+  stack, so it undoes a skip correctly too); omit it for a linear wizard.
+- This is the package's **first primitive built directly on
+  `frappe.ui.Dialog`**, not on the dashboard renderer — see `ui/wizard.js`'s
+  own doc comment for what that means for testability under `TestHost` (short
+  version: there is no Dialog to test against outside a real Desk session, so
+  only its two pure environmental calls — translation, the msgprint dialog on
+  a failed step gate — go through `host()`).
+- **`host().notify(options)`** is new on the host interface (`DeskHost` calls
+  `frappe.msgprint`; `TestHost` records to `host.notifications` instead of
+  showing anything) — the one interface addition this needed.
+
+**Consumer action: none**, unless a page starts using `run_wizard` or
+`host().notify`.
+
 ---
 
 ## v0.5.1 — 2026-08-13

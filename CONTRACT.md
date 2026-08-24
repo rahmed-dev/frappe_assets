@@ -64,6 +64,7 @@ dashboard module alone).
 | `TONES` | object | The five built-in tone definitions |
 | `columns_of` | function | `(value, fallback)` → a column count clamped to what the stylesheet paints |
 | `fmt` | namespace | `esc · blank · count · percent · date · duration · delta · trend` |
+| `run_wizard` | function | `(dialog, steps, fields, opts)` — runs a `frappe.ui.Dialog`'s fields as a multi-step wizard: one Section Break per step, a progress bar, Next/Back bound to the dialog's own footer. See `ui/wizard.js` for the full option shape. Built on `frappe.ui.Dialog` directly — the one export in this table that only runs inside a real Desk session. |
 
 ### Charts
 
@@ -276,6 +277,7 @@ and `TestHost` both implement all of it.
 | `on_realtime(event, handler)` | Returns an unsubscribe function |
 | `after_paint(callback)` | Run once the markup written this tick has been laid out |
 | `warn(message)` / `error(error)` | Diagnostics |
+| `notify(options)` | A blocking message dialog, `{title, message, indicator}` — Frappe's own `msgprint` shape |
 
 `esc` is deliberately **not** on this interface. A safety property that can be
 swapped out is not one.

@@ -208,6 +208,11 @@ export class DeskHost {
 	error(error) {
 		console.error(error); // eslint-disable-line no-console
 	}
+
+	/** A blocking message dialog. `{title, message, indicator}`, Frappe's own shape. */
+	notify(options) {
+		frappe.msgprint(options);
+	}
 }
 
 // ============================================================================
@@ -237,6 +242,7 @@ export class TestHost {
 		this.routes = [];
 		this.calls = [];
 		this.warnings = [];
+		this.notifications = [];
 		this.route_options = {};
 		this.responses = options.responses || {};
 		// The query string, as an object rather than a string. A test asserting on
@@ -352,5 +358,10 @@ export class TestHost {
 
 	error(error) {
 		this.warnings.push(error);
+	}
+
+	/** Recorded, not shown. Assert on `host.notifications` instead of a dialog. */
+	notify(options) {
+		this.notifications.push(options);
 	}
 }

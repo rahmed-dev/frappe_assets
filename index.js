@@ -45,6 +45,7 @@ export { tone, tones, TONES } from "./ui/tone.js";
 export { columns_of } from "./ui/layout.js";
 export * as fmt from "./ui/format.js";
 export { to_csv, csv_cell, save_csv, save_data_url, save, stamp, slug_name } from "./ui/export.js";
+export { run as run_wizard } from "./ui/wizard.js";
 
 // -------------------------------------------------------------------- charts
 // The helpers only. They resolve design tokens and axis bounds and import no
@@ -73,6 +74,7 @@ import { tone, tones, TONES } from "./ui/tone.js";
 import { columns_of } from "./ui/layout.js";
 import * as fmt from "./ui/format.js";
 import * as exporters from "./ui/export.js";
+import { run as run_wizard } from "./ui/wizard.js";
 import * as chart_helpers from "./charts/helpers.js";
 import * as chart_adapter from "./charts/adapter.js";
 import { State, RANGE_KEYS } from "./data/state.js";
@@ -109,6 +111,7 @@ export const dd = {
 	save_csv: exporters.save_csv,
 	save_data_url: exporters.save_data_url,
 	stamp: exporters.stamp,
+	run_wizard,
 	// charts
 	palette: chart_helpers.palette,
 	token: chart_helpers.token,
