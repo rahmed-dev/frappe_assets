@@ -8,11 +8,7 @@ Every release carries a **Consumer action** line. `None` means: bump the tag,
 
 ---
 
-## Unreleased — v0.6.0
-
-Work in progress. Nothing here is tagged, and the version files still read
-`0.5.1` — they move when the release is cut, in one commit, as
-[`CONTRIBUTING.md`](CONTRIBUTING.md) §4 requires.
+## v0.6.0 — 2026-08-24
 
 **The `table` panel stops being a short table.** A table with three hundred rows
 in it had two answers on this toolkit, and both were wrong: leave it whole and
