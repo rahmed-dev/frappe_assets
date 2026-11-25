@@ -13,6 +13,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { render_to_string } from "../../dashboard/render.js";
 import { setHost, resetHost, TestHost } from "../../core/host.js";
+import { esc } from "../../core/escape.js";
 
 beforeEach(() => {
 	resetHost();
@@ -463,5 +464,113 @@ describe("per-panel states", () => {
 			blocks: [{ type: "chart", state: "loading", option: {} }],
 		});
 		expect(pass.mounts).toEqual([]);
+	});
+});
+
+describe("steps", () => {
+	const strip = (extra = {}) =>
+		one({
+			type: "steps",
+			title: "REQ-1",
+			subtitle: "New connection",
+			action: { label: "Open", href: "/app/request/REQ-1" },
+			steps: [
+				{ label: "Draft", state: "done", date: "2026-11-25" },
+				{ label: "Sent", state: "skipped" },
+				{ label: "Waiting", state: "current", note: "In this stage since 2 days" },
+				{ label: "Done", state: "todo" },
+			],
+			...extra,
+		});
+
+	it("draws an ordered list with one class per state and the current step marked", () => {
+		const html = strip();
+		expect(html).toContain('<ol class="dd-steps-list">');
+		for (const cls of ["dd-step-done", "dd-step-skipped", "dd-step-current", "dd-step-todo"]) {
+			expect(html).toContain(cls);
+		}
+		expect(html.match(/aria-current="step"/g)).toHaveLength(1);
+		expect(html).toContain("2026-11-25");
+		expect(html).toContain("In this stage since 2 days");
+	});
+
+	it("states every step in text, not by colour alone", () => {
+		const html = strip();
+		for (const word of ["(Done)", "(Skipped)", "(Current step)", "(Not started)"]) {
+			expect(html).toContain(word);
+		}
+	});
+
+	it("prints the head and the action as a plain link", () => {
+		const html = strip();
+		// `esc` encodes "/" as an entity; the browser decodes it in the attribute.
+		expect(html).toContain(`<a class="dd-steps-action" href="${esc("/app/request/REQ-1")}">Open</a>`);
+		expect(html).toContain("dd-steps-subtitle");
+	});
+
+	it("drops a link that is not a site path or an http(s) URL", () => {
+		for (const href of ["javascript:alert(1)", "//evil.example/x", " JavaScript:alert(1)"]) {
+			expect(strip({ action: { label: "Open", href } })).not.toContain("dd-steps-action");
+		}
+		expect(strip({ action: { label: "Go", href: "https://example.com/a" } })).toContain(
+			`href="${esc("https://example.com/a")}"`,
+		);
+	});
+
+	it("leaves the head out when it has nothing to say", () => {
+		const html = one({ type: "steps", steps: [{ label: "A", state: "current" }] });
+		expect(html).not.toContain("dd-steps-head");
+	});
+
+	it("escapes every value it did not generate", () => {
+		const html = strip({
+			title: XSS,
+			subtitle: XSS,
+			action: { label: XSS, href: "/app/x" },
+			steps: [{ label: XSS, state: "current", date: XSS, note: XSS }],
+		});
+		expect(html).not.toContain("<img");
+	});
+});
+
+describe("steps reading rules", async () => {
+	const { normalise, render_steps } = await import("../../dashboard/panels/steps.js");
+
+	it("keeps one current step at most; a second reads as todo", () => {
+		const out = normalise([
+			{ label: "A", state: "current" },
+			{ label: "B", state: "current" },
+		]);
+		expect(out.map((s) => s.state)).toEqual(["current", "todo"]);
+	});
+
+	it("reads an unknown state as todo", () => {
+		expect(normalise([{ label: "A", state: "finished" }])[0].state).toBe("todo");
+	});
+
+	it("ends the strip at the first failed step", () => {
+		const out = normalise([
+			{ label: "A", state: "done" },
+			{ label: "Failed", state: "failed" },
+			{ label: "C", state: "todo" },
+		]);
+		expect(out.map((s) => s.label)).toEqual(["A", "Failed"]);
+	});
+
+	it("draws no date line for a step with no date", () => {
+		const html = render_steps({ steps: [{ label: "A", state: "done" }] });
+		expect(html).not.toContain("dd-step-date");
+	});
+
+	it("wraps the standalone strip in its own token anchor", () => {
+		const html = render_steps({ steps: [{ label: "A", state: "done" }] });
+		expect(html.startsWith('<div class="dd-page dd-embed">')).toBe(true);
+		expect(html).toContain('<div class="dd-steps">');
+	});
+
+	it("is on the barrel and the namespace", async () => {
+		const barrel = await import("../../index.js");
+		expect(barrel.render_steps).toBe(render_steps);
+		expect(barrel.dd.render_steps).toBe(render_steps);
 	});
 });

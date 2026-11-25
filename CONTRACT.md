@@ -102,6 +102,7 @@ engine, so an app can reach for `bounds()` without loading one.
 | `Dashboard` | class | Constructor `(page, options)`; options as documented in `dashboard/README.md § Dashboard options`. Also `refresh(force)`, `destroy()`, `on(event, handler)`, `off(event, handler)`, `range()`, `filters()`, and the `state` and `resource` it was built with |
 | `render` | function | `(container, spec)` → `{drills, mounts}`. Writes into the container. Never fetches |
 | `render_to_string` | function | `(spec)` → `{html, drills, mounts}`. Pure — no DOM required |
+| `render_steps` | function | `(node)` → the HTML string of one `steps` panel, wrapped in its own token anchor (`.dd-page.dd-embed`), for use outside a dashboard (a Desk form, a dialog). Pure — no DOM required. `node` is the `steps` panel without `type` |
 | `page` | function | `(wrapper, options)` → a `Dashboard`, having built the Desk page. Idempotent per wrapper |
 | `drill` | function | `(descriptor, context)` |
 | `dd` | object | The same exports gathered on one namespace object, for a page that cannot destructure |
@@ -127,7 +128,12 @@ descriptor shapes.
 In particular these, because they are the ones that get "tidied":
 
 - Panel types: `kpis · fields · card · bars · rows · table · chart · text ·
-  section · split · grid · html`
+  section · split · grid · html · steps`
+- Steps panel: `{title, subtitle, action: {label, href}, steps: [{label, state,
+  date, note}]}`; step `state`: `done · current · todo · failed · skipped`. At
+  most one `current` (a second reads as `todo`), an unknown state reads as
+  `todo`, and nothing is drawn after the first `failed` step. `action.href`
+  is printed only when it is a site path, an http(s) URL or a fragment
 - KPI delta: `{value, good, unit}` — a reading, not markup
 - Table cell object: `{ value, tone, pill, tag, sort }`; table row: `tone`,
   `drill`; table panel: `caption`, `caption_visible`, `sortable`,
@@ -186,6 +192,24 @@ something. These class names are stable. `{tone}` expands over every name in
 | `.dd-state-loading` | that panel while it is loading |
 | `.dd-state-empty` | that panel with nothing to show |
 | `.dd-state-error` | that panel after a failed query |
+| `.dd-embed` | the token anchor `render_steps` writes outside a dashboard (with `.dd-page`) |
+| `.dd-steps` | a `steps` panel |
+| `.dd-steps-head` | its head line: title, subtitle, action |
+| `.dd-steps-title` | the head's title |
+| `.dd-steps-subtitle` | the head's subtitle |
+| `.dd-steps-action` | the head's link |
+| `.dd-steps-list` | the `<ol>` of steps |
+| `.dd-step` | one step |
+| `.dd-step-done` | a done step |
+| `.dd-step-current` | the current step (also `aria-current="step"`) |
+| `.dd-step-todo` | a step not reached yet |
+| `.dd-step-failed` | the failed step that ends the strip |
+| `.dd-step-skipped` | a step the record skipped |
+| `.dd-step-dot` | a step's circle |
+| `.dd-step-body` | a step's text column |
+| `.dd-step-label` | a step's label |
+| `.dd-step-date` | a step's date |
+| `.dd-step-note` | a step's note line |
 
 Every other `dd-` class is internal.
 

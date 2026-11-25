@@ -327,7 +327,7 @@ localhost.
 - **A module whose import IS its interface must be listed in `sideEffects`.**
   Three are: `demo/**` (`gallery.js` pulls `frappe-stub.js` in as a bare import),
   `charts/echarts.js` (importing it registers the engine) and
-  `dashboard/panels/index.js` (importing it registers the twelve panels). Under a
+  `dashboard/panels/index.js` (importing it registers the thirteen panels). Under a
   blanket `false` a bundler is entitled to delete a bare import, and it does —
   esbuild says so out loud, `Ignoring this import because "…" was marked as
   having no side effects`, which in the panels case would have shipped a renderer

@@ -301,6 +301,28 @@ empty card under the shorter side.
 
 **`text`** — `{ type: "text", text, style: "caveat" | "empty" }`
 
+**`steps`** — a read-only stepper strip: where one record is in a fixed sequence.
+```js
+{ type: "steps", title, subtitle, action: { label, href }, steps: [
+    { label, state: "done"|"current"|"todo"|"failed"|"skipped", date, note } ] }
+```
+It states a position and moves nothing; for a dialog with Next and Back use
+`run_wizard`. At most one step is `current` (a second reads as `todo`), an
+unknown state reads as `todo`, and nothing is drawn after the first `failed`
+step, which ends the strip in the danger tone. `date` is a stored date or
+datetime, shown through `fmt.date`; a step with no date draws no date line,
+never a dash. `note` is one muted line under its step. The head is left out when
+it has no title, subtitle or action. `action.href` is printed only when it is a
+site path, an http(s) URL or a fragment: escaping does not stop a `javascript:`
+link. Every state is also written in text for a screen reader, and the current
+step carries `aria-current="step"`. The strip turns vertical when its own box is
+480px wide or less (a container query, so a narrow form column counts too).
+
+Outside a dashboard — a Desk form, a dialog — call **`render_steps(node)`** (the
+same node, `type` not needed). It returns the HTML string wrapped in its own
+token anchor, `.dd-page.dd-embed`, because every design token is declared on
+`.dd-page`. The host still needs the stylesheet loaded.
+
 **`html`** — the escape hatch. **Not escaped.** `{ type: "html", html }`
 
 An unknown `type` throws rather than rendering nothing — a silently skipped panel

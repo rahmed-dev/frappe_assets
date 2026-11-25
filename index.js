@@ -62,6 +62,7 @@ export { VERSION } from "./core/version.js";
 export { page } from "./desk/page.js";
 export { Dashboard } from "./dashboard/controller.js";
 export { render, render_to_string } from "./dashboard/render.js";
+export { render_steps } from "./dashboard/panels/steps.js";
 export { follow as drill } from "./dashboard/drill.js";
 
 import * as core_host from "./core/host.js";
@@ -83,6 +84,7 @@ import { VERSION } from "./core/version.js";
 import { page } from "./desk/page.js";
 import { Dashboard } from "./dashboard/controller.js";
 import { render, render_to_string } from "./dashboard/render.js";
+import { render_steps } from "./dashboard/panels/steps.js";
 import { follow } from "./dashboard/drill.js";
 
 export const dd = {
@@ -133,5 +135,6 @@ export const dd = {
 	Dashboard,
 	render,
 	render_to_string,
+	render_steps,
 	drill: follow,
 };

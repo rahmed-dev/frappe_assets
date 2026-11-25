@@ -695,6 +695,72 @@ const SPEC = {
 			},
 		},
 
+		{ type: "section", title: "Steps" },
+		{
+			type: "card",
+			title: "A stepper strip",
+			hint: "all five states; the head carries a link",
+			body: {
+				type: "steps",
+				title: "ORD-0042",
+				subtitle: "Site survey",
+				action: { label: "Open", href: "#steps" },
+				steps: [
+					{ label: "Draft", state: "done", date: "2026-11-20" },
+					{ label: "Approved", state: "skipped" },
+					{ label: "Sent", state: "done", date: "2026-11-21 09:14" },
+					{ label: "Waiting for the vendor", state: "current", date: "2026-11-21 09:15", note: "In this stage since 4 days" },
+					{ label: "Booked", state: "todo" },
+					{ label: "Completed", state: "todo" },
+				],
+			},
+		},
+		{
+			type: "grid",
+			columns: 3,
+			blocks: [
+				{
+					type: "card",
+					title: "A failed end",
+					hint: "narrow box: the strip turns vertical",
+					body: {
+						type: "steps",
+						steps: [
+							{ label: "Draft", state: "done", date: "2026-11-20" },
+							{ label: "Sent", state: "done", date: "2026-11-20" },
+							{ label: "Rejected by the vendor", state: "failed", date: "2026-11-22" },
+							{ label: "never drawn", state: "todo" },
+						],
+					},
+				},
+				{
+					type: "card",
+					title: "Done, dates unknown",
+					hint: "older than its history: no date, never a dash",
+					body: {
+						type: "steps",
+						steps: [
+							{ label: "Draft", state: "done" },
+							{ label: "Sent", state: "done" },
+							{ label: "Completed", state: "done", date: "2026-11-24" },
+						],
+					},
+				},
+				{
+					type: "card",
+					title: "Nothing started",
+					body: {
+						type: "steps",
+						steps: [
+							{ label: "Draft", state: "current", note: "Saved, not sent" },
+							{ label: "Sent", state: "todo" },
+							{ label: "Completed", state: "todo" },
+						],
+					},
+				},
+			],
+		},
+
 		{ type: "section", title: "Cartesian" },
 		{
 			type: "grid",

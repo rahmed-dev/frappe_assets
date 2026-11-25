@@ -22,7 +22,7 @@ import { host } from "../core/host.js";
 import { esc } from "../core/escape.js";
 import { unwrap, fill } from "../core/dom.js";
 import { Pass, panels } from "../core/spec.js";
-// Side-effect import: this is what puts the twelve built-in panels in the
+// Side-effect import: this is what puts the thirteen built-in panels in the
 // registry. Anything that renders a spec goes through this file, so nothing else
 // has to remember to do it.
 import "./panels/index.js";

@@ -8,6 +8,32 @@ Every release carries a **Consumer action** line. `None` means: bump the tag,
 
 ---
 
+## v0.7.0 — 2026-11-25
+
+**A stepper strip, for a form as well as a dashboard.** Three consuming needs
+in one app were a "where is this record" timeline, and each was about to be
+hand-rolled. The `steps` panel draws one record's position in a fixed sequence:
+circles joined by a line, the done steps with their dates, the current one
+marked, the rest grey.
+
+- **`{type: "steps"}`**, the thirteenth built-in panel. Step states `done ·
+  current · todo · failed · skipped`; a `failed` step ends the strip in red. See
+  `dashboard/README.md § Panels` for the reading rules (one current at most,
+  unknown reads as todo, no date draws nothing).
+- **`render_steps(node)`** on the barrel and on `dd`: the same strip as an HTML
+  string for use outside a dashboard, wrapped in its own token anchor
+  (`.dd-page.dd-embed`). Pure.
+- The strip turns vertical by the width of its own box (a container query),
+  not the window: a form column is narrow on a wide monitor too.
+- The head's link is printed only for a site path, an http(s) URL or a
+  fragment.
+- New classes in `CONTRACT.md` §3: `.dd-embed`, `.dd-steps*`, `.dd-step*`.
+
+**Consumer action:** None for an existing page. To draw a strip, load the
+stylesheet and call `render_steps` or add a `steps` panel.
+
+---
+
 ## v0.6.0 — 2026-08-24
 
 **The `table` panel stops being a short table.** A table with three hundred rows

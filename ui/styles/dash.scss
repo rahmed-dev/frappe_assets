@@ -737,6 +737,208 @@ body:not(.full-width) .dd-host .container {
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * §9b · STEPS — a read-only stepper strip (since v0.7.0)
+ *
+ * Circles joined by a line. The line after a step belongs to that step
+ * (`::after`), so its colour says how far the record got: solid tone after a
+ * done step, grey after the current one, dashed after a skipped one.
+ *
+ * The strip turns vertical by the width of ITS OWN box, not the window: its
+ * first home is a Desk form section, which is narrow on a wide monitor too.
+ * Hence a container query rather than a media query.
+ *
+ * `.dd-embed` is the anchor `render_steps()` writes outside a dashboard. It is a
+ * `.dd-page` for the tokens, minus the page gutter the host surface already has.
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.dd-page.dd-embed {
+	padding: 0;
+}
+.dd-page .dd-steps {
+	container-type: inline-size;
+	--dd-step-dot: 20px;
+	--dd-step-gap: 4px;
+}
+.dd-page .dd-steps-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--dd-space-2);
+	margin-bottom: var(--dd-space-3);
+}
+.dd-page .dd-steps-title {
+	font-size: var(--dd-text-md);
+	font-weight: 600;
+}
+.dd-page .dd-steps-subtitle {
+	color: var(--dd-text-muted);
+	font-size: var(--dd-text-sm);
+}
+.dd-page .dd-steps-action {
+	margin-left: auto;
+	color: var(--dd-info-fg);
+	font-size: var(--dd-text-sm);
+	font-weight: 600;
+	text-decoration: none;
+}
+.dd-page .dd-steps-action:hover {
+	text-decoration: underline;
+}
+.dd-page .dd-steps-action:focus-visible {
+	outline: 2px solid var(--dd-info);
+	outline-offset: 2px;
+	border-radius: var(--dd-radius-sm);
+}
+.dd-page .dd-steps-list {
+	display: flex;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.dd-page .dd-step {
+	position: relative;
+	display: flex;
+	flex: 1 1 0;
+	flex-direction: column;
+	align-items: center;
+	min-width: 0;
+	padding: 0 var(--dd-space-1);
+	text-align: center;
+}
+.dd-page .dd-step:not(:last-child)::after {
+	content: "";
+	position: absolute;
+	top: calc(var(--dd-step-dot) / 2 - 1px);
+	left: calc(50% + var(--dd-step-dot) / 2 + var(--dd-step-gap));
+	right: calc(-50% + var(--dd-step-dot) / 2 + var(--dd-step-gap));
+	border: 0 solid var(--dd-border-strong);
+	border-top-width: 2px;
+}
+.dd-page .dd-step-done:not(:last-child)::after {
+	border-color: var(--dd-success);
+}
+.dd-page .dd-step-skipped:not(:last-child)::after {
+	border-style: dashed;
+}
+.dd-page .dd-step-dot {
+	position: relative;
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	width: var(--dd-step-dot);
+	height: var(--dd-step-dot);
+	border: 2px solid var(--dd-border-strong);
+	border-radius: 50%;
+	background: var(--dd-surface);
+	color: var(--dd-surface);
+}
+.dd-page .dd-step-dot svg {
+	width: 12px;
+	height: 12px;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 2;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+.dd-page .dd-step-done .dd-step-dot {
+	border-color: var(--dd-success);
+	background: var(--dd-success);
+}
+.dd-page .dd-step-failed .dd-step-dot {
+	border-color: var(--dd-danger);
+	background: var(--dd-danger);
+}
+.dd-page .dd-step-current .dd-step-dot {
+	border-color: var(--dd-info);
+	box-shadow: 0 0 0 3px var(--dd-info-bg);
+}
+.dd-page .dd-step-current .dd-step-dot::after {
+	content: "";
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--dd-info);
+}
+.dd-page .dd-step-skipped .dd-step-dot {
+	border-style: dashed;
+}
+.dd-page .dd-step-body {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	min-width: 0;
+	margin-top: var(--dd-space-2);
+	overflow-wrap: anywhere;
+}
+.dd-page .dd-step-label {
+	color: var(--dd-text-muted);
+	font-size: var(--dd-text-sm);
+	line-height: 1.35;
+}
+.dd-page .dd-step-todo .dd-step-label {
+	color: var(--dd-text-muted);
+}
+.dd-page .dd-step-done .dd-step-label {
+	color: var(--dd-text);
+}
+.dd-page .dd-step-current .dd-step-label {
+	color: var(--dd-text);
+	font-weight: 600;
+}
+.dd-page .dd-step-failed .dd-step-label {
+	color: var(--dd-danger-fg);
+	font-weight: 600;
+}
+.dd-page .dd-step-skipped .dd-step-label {
+	color: var(--dd-text-subtle);
+}
+.dd-page .dd-step-date,
+.dd-page .dd-step-note {
+	color: var(--dd-text-muted);
+	font-size: var(--dd-text-xs);
+	line-height: 1.4;
+}
+.dd-page .dd-step-date {
+	font-variant-numeric: tabular-nums;
+}
+.dd-page .dd-step-note {
+	margin-top: 2px;
+}
+
+@container (max-width: 480px) {
+	/* On the list, not on `.dd-steps`: a container query never matches the
+	   container itself. */
+	.dd-page .dd-steps-list {
+		--dd-step-gap: 2px;
+		flex-direction: column;
+	}
+	.dd-page .dd-step {
+		flex-direction: row;
+		align-items: flex-start;
+		gap: var(--dd-space-3);
+		padding: 0 0 var(--dd-space-4);
+		text-align: left;
+	}
+	.dd-page .dd-step:last-child {
+		padding-bottom: 0;
+	}
+	.dd-page .dd-step:not(:last-child)::after {
+		top: calc(var(--dd-step-dot) + var(--dd-step-gap));
+		bottom: var(--dd-step-gap);
+		left: calc(var(--dd-step-dot) / 2 - 1px);
+		right: auto;
+		border-top-width: 0;
+		border-left-width: 2px;
+	}
+	.dd-page .dd-step-body {
+		align-items: flex-start;
+		margin-top: 1px;
+	}
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  * §10 · TABLES
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .dd-page .dd-table {

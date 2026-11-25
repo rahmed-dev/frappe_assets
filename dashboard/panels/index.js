@@ -1,7 +1,7 @@
 /**
  * The built-in panel set, registered.
  *
- * Importing this module is what puts the twelve built-ins in the registry.
+ * Importing this module is what puts the thirteen built-ins in the registry.
  * `dashboard/render.js` imports it, so anything that renders a spec has them;
  * nothing else needs to.
  *
@@ -29,8 +29,9 @@ import * as table from "./table.js";
 import * as chart from "./chart.js";
 import { card, split, grid, section } from "./layout.js";
 import { text, html } from "./text.js";
+import * as steps from "./steps.js";
 
-for (const panel of [kpis, fields, bars, rows, table, chart, card, split, grid, section, text, html]) {
+for (const panel of [kpis, fields, bars, rows, table, chart, card, split, grid, section, text, html, steps]) {
 	// `redefine` rather than `define`, and only here: a module can be evaluated
 	// twice in a session — two bundles, a hot reload, a test importing the barrel
 	// after a panel file — and the built-in set colliding with itself is not the

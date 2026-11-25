@@ -31,8 +31,8 @@ afterEach(() => {
 });
 
 describe("the panel registry", () => {
-	it("has the built-in twelve, and they are the same kind of thing as an added one", () => {
-		for (const name of ["kpis", "fields", "card", "bars", "rows", "table", "chart", "text", "section", "split", "grid", "html"]) {
+	it("has the built-in thirteen, and they are the same kind of thing as an added one", () => {
+		for (const name of ["kpis", "fields", "card", "bars", "rows", "table", "chart", "text", "section", "split", "grid", "html", "steps"]) {
 			expect(panels.has(name)).toBe(true);
 		}
 		expect(panels.get("kpis").render).toBeTypeOf("function");
